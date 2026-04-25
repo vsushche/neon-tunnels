@@ -117,12 +117,12 @@ export function render(state, now) {
         ctx.stroke();
 
         if (p2.seg.type === 'door') {
-            let doorVal = Math.sin(now * 0.003 * p2.seg.doorSpeed + p2.seg.doorPhaseOffset);
-            let doorClosedRatio = Math.max(0, Math.min(1, -doorVal * 5 + 0.5));
+            let sineWave = (Math.sin(now * 0.0005 * p2.seg.doorSpeed + p2.seg.doorPhaseOffset) + 1) / 2;
+            let doorClosedRatio = sineWave * 1.0;
             
             if (doorClosedRatio > 0) {
                 let doorH = p2.h * doorClosedRatio;
-                ctx.fillStyle = `hsla(340, 100%, 50%, 0.8)`;
+                ctx.fillStyle = `hsl(340, 100%, 50%)`;
                 
                 ctx.fillRect(p2.sx - p2.w, p2.sy - p2.h, p2.w * 2, doorH);
                 ctx.fillRect(p2.sx - p2.w, p2.sy + p2.h - doorH, p2.w * 2, doorH);

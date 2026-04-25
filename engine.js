@@ -119,10 +119,11 @@ export function updateEngine(dt, now) {
             let segDist = state.cameraZ - (currentSegIndex * SEGMENT_LENGTH);
             if (segDist < 100 && state.speed > 0) {
                 if (currentSeg.type === 'door') {
-                    let doorVal = Math.sin(now * 0.003 * currentSeg.doorSpeed + currentSeg.doorPhaseOffset);
-                    let isOpen = doorVal > 0;
+                    let sineWave = (Math.sin(now * 0.0005 * currentSeg.doorSpeed + currentSeg.doorPhaseOffset) + 1) / 2;
+                    let doorClosedRatio = sineWave * 1.0;
+                    let safeDistanceY = currentH * (1 - doorClosedRatio);
                     
-                    if (!isOpen) {
+                    if (Math.abs(state.shipY) + SHIP_SIZE > safeDistanceY) {
                         handleCrash();
                     } else if (!currentSeg.passed) {
                         playDoorPassSound();
