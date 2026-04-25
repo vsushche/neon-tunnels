@@ -1,11 +1,11 @@
-import { playCrashSound, playDoorPassSound } from './audio.js';
+import { playCrashSound, playDoorPassSound, startEngineSound, updateEngineSound, stopEngineSound } from './audio.js';
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const uiSpeed = document.getElementById('ui-speed');
 const uiSpeedBar = document.getElementById('ui-speed-bar');
 const uiLevel = document.getElementById('ui-level');
-const uiLives = document.getElementById('ui-lives');
+const uiTime = document.getElementById('ui-time');
 const uiProgress = document.getElementById('ui-progress-bar');
 const flashOverlay = document.getElementById('flash-overlay');
 const menuScreen = document.getElementById('menu-screen');
@@ -32,7 +32,8 @@ const VISIBLE_SEGMENTS = 20;
 // Game State
 let gameState = 'menu'; // menu, playing, dead, win
 let currentLevel = 1;
-let lives = 3;
+let startTime = 0;
+let elapsedTime = 0;
 let cameraZ = 0;
 let speed = 0;
 let MAX_SPEED = 2500;
@@ -126,11 +127,13 @@ function createTrack(level) {
 
 function startGame(level) {
     currentLevel = level;
-    if (level === 1) lives = 3;
+    startTime = performance.now();
+    elapsedTime = 0;
     createTrack(level);
     resetPlayer();
     gameState = 'playing';
     menuScreen.classList.add('hidden');
+    startEngineSound();
     updateHUD();
 }
 
@@ -150,22 +153,13 @@ function handleCrash() {
     // Flash effect
     flashOverlay.classList.add('flash');
     setTimeout(() => {
-        flashOverlay.classList.remove('flash');
+        if(flashOverlay) flashOverlay.classList.remove('flash');
     }, 50);
 
-    speed = -1000; // Bounce back
-    lives--;
-    updateHUD();
+    speed = 0; 
+    cameraZ -= 300; // Легкий отскок назад
     
-    if (lives <= 0) {
-        gameState = 'dead';
-        setTimeout(() => {
-            document.getElementById('menu-title').innerText = "SYSTEM FAILURE";
-            document.getElementById('menu-title').style.color = "#ff0055";
-            document.getElementById('start-btn').innerText = "REBOOT";
-            menuScreen.classList.remove('hidden');
-        }, 1000);
-    }
+    updateHUD();
 }
 
 function handleWin() {
@@ -176,12 +170,13 @@ function handleWin() {
         document.getElementById('menu-title').style.color = "#00ffcc";
         document.getElementById('start-btn').innerText = "NEXT SECTOR";
         menuScreen.classList.remove('hidden');
+        stopEngineSound();
     }, 1500);
 }
 
 function updateHUD() {
     uiLevel.innerText = currentLevel;
-    uiLives.innerText = '❤️'.repeat(Math.max(0, lives));
+    uiTime.innerText = elapsedTime.toFixed(2) + 's';
     uiSpeed.innerText = Math.floor(speed);
     uiSpeedBar.style.width = `${Math.max(0, (speed / MAX_SPEED) * 100)}%`;
     let progress = Math.min(100, Math.max(0, (cameraZ / (trackLength * SEGMENT_LENGTH)) * 100));
@@ -209,9 +204,11 @@ function gameLoop(now) {
 
     if (gameState === 'playing') {
         update(dt, now);
+        updateEngineSound(speed, MAX_SPEED);
     } else if (gameState === 'win') {
         speed *= 0.95; // Smooth stop
         cameraZ += speed * dt;
+        updateEngineSound(speed, MAX_SPEED);
     }
     
     render(now);
@@ -219,6 +216,7 @@ function gameLoop(now) {
 }
 
 function update(dt, now) {
+    elapsedTime = (now - startTime) / 1000;
     // Speed control
     if (keys.Space) {
         speed += 1500 * dt;
@@ -261,16 +259,22 @@ function update(dt, now) {
     
     let collisionMargin = SHIP_SIZE;
     
-    if (shipX < -currentW + collisionMargin || shipX > currentW - collisionMargin || 
-        shipY < -currentH + collisionMargin || shipY > currentH - collisionMargin) {
+    let hitWall = false;
+    
+    if (shipX < -currentW + collisionMargin) { shipX = -currentW + collisionMargin; shipVX = Math.abs(shipVX) * 1.2 + 2000; hitWall = true; }
+    if (shipX > currentW - collisionMargin) { shipX = currentW - collisionMargin; shipVX = -Math.abs(shipVX) * 1.2 - 2000; hitWall = true; }
+    if (shipY < -currentH + collisionMargin) { shipY = -currentH + collisionMargin; shipVY = Math.abs(shipVY) * 1.2 + 2000; hitWall = true; }
+    if (shipY > currentH - collisionMargin) { shipY = currentH - collisionMargin; shipVY = -Math.abs(shipVY) * 1.2 - 2000; hitWall = true; }
+    
+    if (hitWall) {
+        speed *= 0.4; // Lose forward speed
         
-        // Push back inside
-        if (shipX < -currentW + collisionMargin) shipX = -currentW + collisionMargin;
-        if (shipX > currentW - collisionMargin) shipX = currentW - collisionMargin;
-        if (shipY < -currentH + collisionMargin) shipY = -currentH + collisionMargin;
-        if (shipY > currentH - collisionMargin) shipY = currentH - collisionMargin;
-        
-        handleCrash();
+        // Provide feedback without losing a life
+        playCrashSound();
+        flashOverlay.classList.add('flash');
+        setTimeout(() => {
+            if(flashOverlay) flashOverlay.classList.remove('flash');
+        }, 50);
     }
     
     // Obstacle Collisions

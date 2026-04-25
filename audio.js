@@ -46,5 +46,52 @@ export function playDoorPassSound() {
     osc.stop(audioCtx.currentTime + 0.1);
 }
 
+let engineOsc;
+let engineGain;
+let isEngineRunning = false;
+
+export function startEngineSound() {
+    if (!audioCtx) return;
+    if (isEngineRunning) return;
+    
+    engineOsc = audioCtx.createOscillator();
+    engineGain = audioCtx.createGain();
+    
+    // Triangle wave gives a smooth low-frequency hum
+    engineOsc.type = 'triangle';
+    
+    engineOsc.connect(engineGain);
+    engineGain.connect(audioCtx.destination);
+    
+    engineOsc.frequency.value = 40;
+    engineGain.gain.value = 0.05;
+    
+    engineOsc.start();
+    isEngineRunning = true;
+}
+
+export function updateEngineSound(speed, maxSpeed) {
+    if (!audioCtx || !isEngineRunning) return;
+    
+    let normalizedSpeed = speed / maxSpeed;
+    if (normalizedSpeed < 0) normalizedSpeed = 0;
+    if (normalizedSpeed > 1) normalizedSpeed = 1;
+    
+    // Adjust pitch: 40Hz to 150Hz
+    engineOsc.frequency.setTargetAtTime(40 + normalizedSpeed * 110, audioCtx.currentTime, 0.1);
+    
+    // Adjust volume: 0.05 to 0.15
+    engineGain.gain.setTargetAtTime(0.05 + normalizedSpeed * 0.1, audioCtx.currentTime, 0.1);
+}
+
+export function stopEngineSound() {
+    if (isEngineRunning && engineOsc) {
+        engineOsc.stop();
+        engineOsc.disconnect();
+        engineGain.disconnect();
+        isEngineRunning = false;
+    }
+}
+
 // Attach to window so game.js can call it if needed, or just export
 window.initAudio = initAudio;
