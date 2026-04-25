@@ -118,16 +118,12 @@ export function updateEngine(dt, now) {
         if (currentSegIndex > 0) {
             let segDist = state.cameraZ - (currentSegIndex * SEGMENT_LENGTH);
             if (segDist < 100 && state.speed > 0) {
-                if (currentSeg.type === 'door') {
-                    let sineWave = (Math.sin(now * 0.0005 * currentSeg.doorSpeed + currentSeg.doorPhaseOffset) + 1) / 2;
-                    let doorClosedRatio = sineWave * 1.0;
-                    let safeDistanceY = currentH * (1 - doorClosedRatio);
-                    
-                    if (Math.abs(state.shipY) + SHIP_SIZE > safeDistanceY) {
+                if (currentSeg.door) {
+                    let result = currentSeg.door.checkCollision(state.shipX, state.shipY, SHIP_SIZE, currentW, currentH, now);
+                    if (result === 'crash') {
                         handleCrash();
-                    } else if (!currentSeg.passed) {
+                    } else if (result === 'passed') {
                         playDoorPassSound();
-                        currentSeg.passed = true;
                     }
                 } else if (currentSeg.type === 'mine') {
                     let dx = state.shipX - currentSeg.mineX;

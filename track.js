@@ -1,4 +1,5 @@
 import { SEGMENT_LENGTH, TUNNEL_WIDTH, TUNNEL_HEIGHT } from './constants.js';
+import { Door } from './doors.js';
 
 export function createTrack(level) {
     let track = [];
@@ -26,11 +27,13 @@ export function createTrack(level) {
         let widthFactor = 1.0;
         let doorPhaseOffset = 0;
         let doorSpeed = 1 + level * 0.2;
+        let doorObj = null;
         
         if (i > 30 && i < trackLength - 30) {
             if (i % 40 === 0) {
                 type = 'door';
                 doorPhaseOffset = Math.random() * Math.PI * 2;
+                doorObj = new Door('vertical', doorSpeed, doorPhaseOffset);
             } else if (i % 75 === 0) {
                 type = 'narrow';
                 widthFactor = 0.5;
@@ -53,6 +56,7 @@ export function createTrack(level) {
             doorSpeed: doorSpeed,
             mineX: type === 'mine' ? (Math.random() - 0.5) * (TUNNEL_WIDTH - 200) : 0,
             mineY: type === 'mine' ? (Math.random() - 0.5) * (TUNNEL_HEIGHT - 200) : 0,
+            door: doorObj,
             hue: colorIndex === 0 ? hue1 : hue2,
             passed: false
         });

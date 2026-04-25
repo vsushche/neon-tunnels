@@ -116,22 +116,8 @@ export function render(state, now) {
         ctx.lineTo(p2.tl_x, p2.tl_y);
         ctx.stroke();
 
-        if (p2.seg.type === 'door') {
-            let sineWave = (Math.sin(now * 0.0005 * p2.seg.doorSpeed + p2.seg.doorPhaseOffset) + 1) / 2;
-            let doorClosedRatio = sineWave * 1.0;
-            
-            if (doorClosedRatio > 0) {
-                let doorH = p2.h * doorClosedRatio;
-                ctx.fillStyle = `hsl(340, 100%, 50%)`;
-                
-                ctx.fillRect(p2.sx - p2.w, p2.sy - p2.h, p2.w * 2, doorH);
-                ctx.fillRect(p2.sx - p2.w, p2.sy + p2.h - doorH, p2.w * 2, doorH);
-                
-                ctx.strokeStyle = '#fff';
-                ctx.lineWidth = 3;
-                ctx.strokeRect(p2.sx - p2.w, p2.sy - p2.h, p2.w * 2, doorH);
-                ctx.strokeRect(p2.sx - p2.w, p2.sy + p2.h - doorH, p2.w * 2, doorH);
-            }
+        if (p2.seg.door) {
+            p2.seg.door.render(ctx, p2.sx, p2.sy, p2.w, p2.h, now);
         }
         
         if (p2.seg.type === 'mine') {
