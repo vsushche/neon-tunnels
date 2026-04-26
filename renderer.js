@@ -42,6 +42,7 @@ export class Renderer {
         
         this.renderStars(state, baseIndex);
         this.renderTunnel(state, now, baseIndex);
+        this.renderProjectiles(state, now);
         
         if (state.gameState === EngineStatus.COUNTDOWN) {
             this.renderCountdown(state);
@@ -221,5 +222,82 @@ export class Renderer {
         this.ctx.shadowColor = '#00ffff';
         this.ctx.strokeText(text, this.width / 2, this.height / 2);
         this.ctx.shadowBlur = 0;
+    }
+
+    renderProjectiles(state, now) {
+        this.ctx.lineWidth = 4;
+        
+        state.projectiles.forEach(p => {
+            const age = now - p.startTime;
+            const progress = age / 5000; // SLOWED DOWN 10x
+            
+            // Laser bolt position in world Z
+            const laserSpeed = 15000;  // world units traveled over 5.0s now
+            const laserLength = 800;
+            
+            // Head starts slightly ahead and flies forward
+            const headZ = p.z + 200 + progress * laserSpeed;
+            const tailZ = headZ - laserLength;
+            
+            // Wing cannons: spread wide near fire point, converge over distance
+            const wingSpread = 600;
+            const convergeDistance = 4000;
+            
+            const sides = [-1, 1];
+            
+            sides.forEach(side => {
+                // World X/Y offset that diminishes with Z (convergence)
+                const getOffsetX = (z) => {
+                    const t = Math.min(1, Math.max(0, (z - p.z) / convergeDistance));
+                    return wingSpread * side * (1 - t);
+                };
+                const getOffsetY = (z) => {
+                    const t = Math.min(1, Math.max(0, (z - p.z) / convergeDistance));
+                    return 80 * (1 - t); // slight downward offset (wings below cockpit)
+                };
+                
+                const minRelZ = 50;
+                
+                // Project tail
+                let tailRelZ = tailZ - state.cameraZ;
+                if (tailRelZ < minRelZ) tailRelZ = minRelZ; // clamp to avoid explosion
+                const tailScale = FOCAL_LENGTH / tailRelZ;
+                const tailSX = this.width / 2 + (p.x + getOffsetX(tailZ) - state.shipX) * tailScale;
+                const tailSY = this.height / 2 + (p.y + getOffsetY(tailZ) - state.shipY) * tailScale;
+                
+                // Project head
+                const headRelZ = headZ - state.cameraZ;
+                if (headRelZ < minRelZ) return; // fully behind camera
+                const headScale = FOCAL_LENGTH / headRelZ;
+                const headSX = this.width / 2 + (p.x + getOffsetX(headZ) - state.shipX) * headScale;
+                const headSY = this.height / 2 + (p.y + getOffsetY(headZ) - state.shipY) * headScale;
+
+                const dx = headSX - tailSX;
+                const dy = headSY - tailSY;
+                const len = Math.sqrt(dx * dx + dy * dy);
+                if (len < 0.1) return;
+                
+                const nx = -dy / len;
+                const ny = dx / len;
+                
+                // True 3D width using original projection scales
+                const baseWorldWidth = 40; 
+                const tailW = Math.max(0.5, (baseWorldWidth * tailScale) / 2);
+                const headW = Math.max(0.5, (baseWorldWidth * headScale) / 2);
+
+                this.ctx.beginPath();
+                this.ctx.moveTo(tailSX + nx * tailW, tailSY + ny * tailW);
+                this.ctx.lineTo(tailSX - nx * tailW, tailSY - ny * tailW);
+                this.ctx.lineTo(headSX - nx * headW, headSY - ny * headW);
+                this.ctx.lineTo(headSX + nx * headW, headSY + ny * headW);
+                this.ctx.closePath();
+                
+                this.ctx.fillStyle = '#ff1a1a'; // bright scarlet core
+                this.ctx.shadowBlur = Math.max(5, 50 * tailScale); // glow decays in distance
+                this.ctx.shadowColor = '#ff0000';
+                this.ctx.fill();
+                this.ctx.shadowBlur = 0;
+            });
+        });
     }
 }

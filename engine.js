@@ -29,6 +29,8 @@ export class GameState {
         this.MAX_SPEED = 0;
         this.countdownTime = 0;
         this.lastBeepStep = -1;
+        this.projectiles = [];
+        this.lastFireTime = 0;
     }
 }
 
@@ -112,6 +114,23 @@ export class GameEngine {
             if (input.controls.right) state.shipVX += SHIP_ACCEL * dt;
             if (input.controls.up) state.shipVY -= SHIP_ACCEL * dt;
             if (input.controls.down) state.shipVY += SHIP_ACCEL * dt;
+
+            // Shooting (renderer draws the twin lasers)
+            if (input.controls.fire && now - state.lastFireTime > 200) {
+                state.projectiles.push({
+                    x: state.shipX,
+                    y: state.shipY,
+                    z: state.cameraZ,
+                    startTime: now
+                });
+                state.lastFireTime = now;
+                audio.playLaserSound();
+            }
+
+            // Update projectiles
+            state.projectiles = state.projectiles.filter(p => {
+                return (now - p.startTime) < 5000; // 5.0s lifetime (SLOWED DOWN 10x)
+            });
             
             state.shipVX *= SHIP_FRICTION;
             state.shipVY *= SHIP_FRICTION;
