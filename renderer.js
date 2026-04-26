@@ -42,7 +42,6 @@ export class Renderer {
         
         this.renderStars(state, baseIndex);
         this.renderTunnel(state, now, baseIndex);
-        this.renderProjectiles(state, now);
         
         if (state.gameState === EngineStatus.COUNTDOWN) {
             this.renderCountdown(state);
@@ -118,42 +117,99 @@ export class Renderer {
             if (p1.seg.index >= state.trackLength - 15) {
                 dim += 0.5;
             }
+
+            // Laser illumination factor
+            let laserGlow = 0;
+            state.projectiles.forEach(p => {
+                const age = now - p.startTime;
+                const progress = age / 5000; // Match slowmo
+                const headZ = p.z + 200 + progress * 15000;
+                const dist = Math.abs(headZ - p1.seg.index * SEGMENT_LENGTH);
+                if (dist < 2000) {
+                    // Halved the intensity (from 0.8 to 0.4)
+                    let glow = (1 - dist/2000) * 0.4;
+                    // Fade glow with distance (dim is 1 near camera, 0 far away)
+                    glow *= dim;
+                    
+                    // Delay illumination: only start glowing when head is > 1000 units away
+                    const headRelZ = headZ - state.cameraZ;
+                    const startupFactor = Math.min(1, Math.max(0, (headRelZ - 1000) / 1000));
+                    glow *= startupFactor;
+                    
+                    laserGlow += glow;
+                }
+            });
+            laserGlow = Math.min(1.5, laserGlow);
             
-            this.renderSegmentPolygons(p1, p2, dim);
-            this.renderSegmentWires(p1, p2, dim);
+            this.renderSegmentPolygons(p1, p2, dim, laserGlow);
+            this.renderSegmentWires(p1, p2, dim, laserGlow);
+            
+            // Draw projectiles that are physically in this segment (behind p2 obstacles)
+            const minZ = p2.seg.index * SEGMENT_LENGTH;
+            const maxZ = p1.seg.index * SEGMENT_LENGTH;
+            this.renderProjectiles(state, now, minZ, maxZ);
+            
             this.renderSegmentObstacles(p2, now, dim);
         }
     }
 
-    renderSegmentPolygons(p1, p2, dim) {
-        let lightness = p1.seg.colorIndex === 0 ? 30 : 20;
+    renderSegmentPolygons(p1, p2, dim, laserGlow = 0) {
+        // Muted lightness for the base tunnel
+        let lightness = p1.seg.colorIndex === 0 ? 15 : 10;
         lightness *= dim;
         
         const hue = p1.seg.hue;
         
-        const colorFloor = `hsl(${hue}, 80%, ${lightness}%)`;
-        const colorCeil  = `hsl(${hue}, 80%, ${lightness - 5}%)`;
-        const colorWall  = `hsl(${hue}, 80%, ${lightness + 5}%)`;
+        // Muted saturation (was 80%)
+        const colorFloor = `hsl(${hue}, 40%, ${lightness}%)`;
+        const colorCeil  = `hsl(${hue}, 40%, ${lightness - 3}%)`;
+        const colorWall  = `hsl(${hue}, 40%, ${lightness + 3}%)`;
         
         this.polygon(p1.tl_x, p1.tl_y, p1.tr_x, p1.tr_y, p2.tr_x, p2.tr_y, p2.tl_x, p2.tl_y, colorCeil);
         this.polygon(p1.bl_x, p1.bl_y, p1.br_x, p1.br_y, p2.br_x, p2.br_y, p2.bl_x, p2.bl_y, colorFloor);
         this.polygon(p1.tl_x, p1.tl_y, p1.bl_x, p1.bl_y, p2.bl_x, p2.bl_y, p2.tl_x, p2.tl_y, colorWall);
         this.polygon(p1.tr_x, p1.tr_y, p1.br_x, p1.br_y, p2.br_x, p2.br_y, p2.tr_x, p2.tr_y, colorWall);
+        
+        // Add transparent pink highlight over existing colors
+        if (laserGlow > 0) {
+            const glowAlpha = Math.min(0.4, laserGlow * 0.4); // max 40% opacity
+            const glowColor = `rgba(255, 105, 180, ${glowAlpha})`; // Hot Pink
+            this.polygon(p1.tl_x, p1.tl_y, p1.tr_x, p1.tr_y, p2.tr_x, p2.tr_y, p2.tl_x, p2.tl_y, glowColor);
+            this.polygon(p1.bl_x, p1.bl_y, p1.br_x, p1.br_y, p2.br_x, p2.br_y, p2.bl_x, p2.bl_y, glowColor);
+            this.polygon(p1.tl_x, p1.tl_y, p1.bl_x, p1.bl_y, p2.bl_x, p2.bl_y, p2.tl_x, p2.tl_y, glowColor);
+            this.polygon(p1.tr_x, p1.tr_y, p1.br_x, p1.br_y, p2.br_x, p2.br_y, p2.tr_x, p2.tr_y, glowColor);
+        }
     }
 
-    renderSegmentWires(p1, p2, dim) {
-        const hue = p1.seg.hue;
-        this.ctx.strokeStyle = `hsla(${hue}, 100%, 50%, ${dim * 0.5})`;
+    renderSegmentWires(p1, p2, dim, laserGlow = 0) {
+        // Muted wires: 50% saturation, lower lightness
+        this.ctx.strokeStyle = `hsl(${p1.seg.hue}, 50%, ${30 * dim}%)`;
         this.ctx.lineWidth = 1;
+        
+        this.ctx.beginPath();
+        this.ctx.moveTo(p1.tl_x, p1.tl_y); this.ctx.lineTo(p1.tr_x, p1.tr_y);
+        this.ctx.lineTo(p1.br_x, p1.br_y); this.ctx.lineTo(p1.bl_x, p1.bl_y);
+        this.ctx.closePath();
+        this.ctx.stroke();
+        
         this.ctx.beginPath();
         this.ctx.moveTo(p1.tl_x, p1.tl_y); this.ctx.lineTo(p2.tl_x, p2.tl_y);
         this.ctx.moveTo(p1.tr_x, p1.tr_y); this.ctx.lineTo(p2.tr_x, p2.tr_y);
         this.ctx.moveTo(p1.bl_x, p1.bl_y); this.ctx.lineTo(p2.bl_x, p2.bl_y);
         this.ctx.moveTo(p1.br_x, p1.br_y); this.ctx.lineTo(p2.br_x, p2.br_y);
-        this.ctx.moveTo(p2.tl_x, p2.tl_y); this.ctx.lineTo(p2.tr_x, p2.tr_y);
-        this.ctx.lineTo(p2.br_x, p2.br_y); this.ctx.lineTo(p2.bl_x, p2.bl_y);
-        this.ctx.lineTo(p2.tl_x, p2.tl_y);
         this.ctx.stroke();
+
+        // Optional: add a subtle pink glow to the wires
+        if (laserGlow > 0) {
+            const glowAlpha = Math.min(0.8, laserGlow * 0.8);
+            this.ctx.strokeStyle = `rgba(255, 105, 180, ${glowAlpha})`;
+            this.ctx.lineWidth = 2;
+            this.ctx.beginPath();
+            this.ctx.moveTo(p1.tl_x, p1.tl_y); this.ctx.lineTo(p1.tr_x, p1.tr_y);
+            this.ctx.lineTo(p1.br_x, p1.br_y); this.ctx.lineTo(p1.bl_x, p1.bl_y);
+            this.ctx.closePath();
+            this.ctx.stroke();
+        }
     }
 
     renderSegmentObstacles(p2, now, dim) {
@@ -224,7 +280,7 @@ export class Renderer {
         this.ctx.shadowBlur = 0;
     }
 
-    renderProjectiles(state, now) {
+    renderProjectiles(state, now, minZ = -Infinity, maxZ = Infinity) {
         this.ctx.lineWidth = 4;
         
         state.projectiles.forEach(p => {
@@ -232,12 +288,21 @@ export class Renderer {
             const progress = age / 5000; // SLOWED DOWN 10x
             
             // Laser bolt position in world Z
-            const laserSpeed = 15000;  // world units traveled over 5.0s now
+            const laserSpeed = 15000;
             const laserLength = 800;
             
             // Head starts slightly ahead and flies forward
             const headZ = p.z + 200 + progress * laserSpeed;
-            const tailZ = headZ - laserLength;
+            
+            // Tail grows naturally from cannon, reaching full length after laserLength distance traveled
+            const distanceTraveled = headZ - (p.z + 200);
+            const currentLength = Math.min(laserLength, distanceTraveled);
+            const tailZ = headZ - currentLength;
+            
+            // Use the TAIL (nearest to camera) for Z-sorting, not the head!
+            // Otherwise closer tunnel segments paint over the laser body.
+            const effectiveTailZ = Math.max(tailZ, state.cameraZ + 50);
+            if (effectiveTailZ < minZ || effectiveTailZ >= maxZ) return;
             
             // Wing cannons: spread wide near fire point, converge over distance
             const wingSpread = 600;
@@ -258,19 +323,33 @@ export class Renderer {
                 
                 const minRelZ = 50;
                 
-                // Project tail
                 let tailRelZ = tailZ - state.cameraZ;
-                if (tailRelZ < minRelZ) tailRelZ = minRelZ; // clamp to avoid explosion
-                const tailScale = FOCAL_LENGTH / tailRelZ;
-                const tailSX = this.width / 2 + (p.x + getOffsetX(tailZ) - state.shipX) * tailScale;
-                const tailSY = this.height / 2 + (p.y + getOffsetY(tailZ) - state.shipY) * tailScale;
-                
-                // Project head
                 const headRelZ = headZ - state.cameraZ;
                 if (headRelZ < minRelZ) return; // fully behind camera
+                
+                let renderTailZ = tailZ;
+                let renderTailX = p.x + getOffsetX(tailZ);
+                let renderTailY = p.y + getOffsetY(tailZ);
+                
+                const headWorldX = p.x + getOffsetX(headZ);
+                const headWorldY = p.y + getOffsetY(headZ);
+                
+                // True 3D clipping against the near plane (z = state.cameraZ + minRelZ)
+                // This prevents the "too short" distortion when the tail is behind the camera!
+                if (tailRelZ < minRelZ) {
+                    const t = (minRelZ - tailRelZ) / (headRelZ - tailRelZ);
+                    renderTailX = renderTailX + t * (headWorldX - renderTailX);
+                    renderTailY = renderTailY + t * (headWorldY - renderTailY);
+                    tailRelZ = minRelZ;
+                }
+                
+                const tailScale = FOCAL_LENGTH / tailRelZ;
+                const tailSX = this.width / 2 + (renderTailX - state.shipX) * tailScale;
+                const tailSY = this.height / 2 + (renderTailY - state.shipY) * tailScale;
+                
                 const headScale = FOCAL_LENGTH / headRelZ;
-                const headSX = this.width / 2 + (p.x + getOffsetX(headZ) - state.shipX) * headScale;
-                const headSY = this.height / 2 + (p.y + getOffsetY(headZ) - state.shipY) * headScale;
+                const headSX = this.width / 2 + (headWorldX - state.shipX) * headScale;
+                const headSY = this.height / 2 + (headWorldY - state.shipY) * headScale;
 
                 const dx = headSX - tailSX;
                 const dy = headSY - tailSY;
