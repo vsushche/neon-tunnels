@@ -193,3 +193,98 @@ export class SingleDoor extends BaseDoor {
         }
     }
 }
+
+export class GateDoor extends BaseDoor {
+    constructor(direction, speed, phaseOffset) {
+        super(speed, phaseOffset);
+        this.direction = direction; // 'horizontal' or 'vertical'
+        this.gapRatio = 0.35; // gap is 35% of tunnel dimension
+    }
+
+    /**
+     * Returns gap center position normalized to -1..+1
+     * Before activation: centered (0). After: oscillates.
+     */
+    getGapPosition(now) {
+        if (!this.activated) {
+            return 0;
+        }
+        let elapsed = (now - this.activationTime) / 1000;
+        return Math.sin(elapsed * this.speed * 0.75);
+    }
+
+    checkCollision(shipX, shipY, shipSize, currentW, currentH, now) {
+        let gapPos = this.getGapPosition(now);
+
+        if (this.direction === 'horizontal') {
+            let gapCenterX = gapPos * currentW * (1 - this.gapRatio);
+            let gapHalfW = currentW * this.gapRatio;
+
+            if (shipX + shipSize > gapCenterX + gapHalfW ||
+                shipX - shipSize < gapCenterX - gapHalfW) {
+                return 'crash';
+            }
+        } else {
+            let gapCenterY = gapPos * currentH * (1 - this.gapRatio);
+            let gapHalfH = currentH * this.gapRatio;
+
+            if (shipY + shipSize > gapCenterY + gapHalfH ||
+                shipY - shipSize < gapCenterY - gapHalfH) {
+                return 'crash';
+            }
+        }
+
+        if (!this.passed) {
+            this.passed = true;
+            return 'passed';
+        }
+        return 'none';
+    }
+
+    render(ctx, sx, sy, w, h, now, dim) {
+        let gapPos = this.getGapPosition(now);
+        let lightness = 50 * dim;
+        let strokeAlpha = dim;
+        ctx.fillStyle = `hsl(${this.hue}, 100%, ${lightness}%)`;
+        ctx.strokeStyle = `rgba(255, 255, 255, ${strokeAlpha})`;
+        ctx.lineWidth = 3;
+
+        if (this.direction === 'horizontal') {
+            let gapCenterX = gapPos * w * (1 - this.gapRatio);
+            let gapHalfW = w * this.gapRatio;
+
+            // Left panel
+            let leftPanelW = w + gapCenterX - gapHalfW;
+            if (leftPanelW > 0) {
+                ctx.fillRect(sx - w, sy - h, leftPanelW, h * 2);
+                ctx.strokeRect(sx - w, sy - h, leftPanelW, h * 2);
+            }
+
+            // Right panel
+            let rightStart = sx + gapCenterX + gapHalfW;
+            let rightPanelW = (sx + w) - rightStart;
+            if (rightPanelW > 0) {
+                ctx.fillRect(rightStart, sy - h, rightPanelW, h * 2);
+                ctx.strokeRect(rightStart, sy - h, rightPanelW, h * 2);
+            }
+        } else {
+            let gapCenterY = gapPos * h * (1 - this.gapRatio);
+            let gapHalfH = h * this.gapRatio;
+
+            // Top panel
+            let topPanelH = h + gapCenterY - gapHalfH;
+            if (topPanelH > 0) {
+                ctx.fillRect(sx - w, sy - h, w * 2, topPanelH);
+                ctx.strokeRect(sx - w, sy - h, w * 2, topPanelH);
+            }
+
+            // Bottom panel
+            let bottomStart = sy + gapCenterY + gapHalfH;
+            let bottomPanelH = (sy + h) - bottomStart;
+            if (bottomPanelH > 0) {
+                ctx.fillRect(sx - w, bottomStart, w * 2, bottomPanelH);
+                ctx.strokeRect(sx - w, bottomStart, w * 2, bottomPanelH);
+            }
+        }
+    }
+}

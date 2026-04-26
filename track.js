@@ -1,5 +1,5 @@
 import { SEGMENT_LENGTH, TUNNEL_WIDTH, TUNNEL_HEIGHT } from './constants.js';
-import { DoubleDoor, SingleDoor } from './doors.js';
+import { DoubleDoor, SingleDoor, GateDoor } from './doors.js';
 
 export function createTrack(level) {
     let track = [];
@@ -35,13 +35,16 @@ export function createTrack(level) {
                 doorPhaseOffset = Math.random() * Math.PI * 2;
                 
                 let rnd = Math.random();
-                if (rnd < 0.5) {
+                if (rnd < 0.33) {
                     let orientation = Math.random() > 0.5 ? 'vertical' : 'horizontal';
                     doorObj = new DoubleDoor(orientation, doorSpeed, doorPhaseOffset);
-                } else {
+                } else if (rnd < 0.66) {
                     const origins = ['top', 'bottom', 'left', 'right'];
                     let origin = origins[Math.floor(Math.random() * origins.length)];
                     doorObj = new SingleDoor(origin, doorSpeed, doorPhaseOffset);
+                } else {
+                    let direction = Math.random() > 0.5 ? 'horizontal' : 'vertical';
+                    doorObj = new GateDoor(direction, doorSpeed, doorPhaseOffset);
                 }
                 doorObj.doorZ = i * SEGMENT_LENGTH;
                 
