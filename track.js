@@ -9,22 +9,37 @@ export function createTrack(level) {
     let currentCurveX = 0;
     let currentCurveY = 0;
     
+    let currentWidthFactor = 1.0;
+    let targetWidthFactor = 1.0;
+    let currentHeightFactor = 1.0;
+    let targetHeightFactor = 1.0;
+    
     const hue1 = (level * 60) % 360;
     const hue2 = (hue1 + 180) % 360;
     
     for (let i = 0; i < trackLength; i++) {
-        if (i % 20 === 0 && i > 10 && i < trackLength - 20) {
+        // Change tunnel dimensions every 60 segments
+        if (i % 60 === 0 && i > 20 && i < trackLength - 40) {
+            targetWidthFactor = 0.5 + Math.random() * 1.0;  // 0.5 to 1.5
+            targetHeightFactor = 0.5 + Math.random() * 1.0; // 0.5 to 1.5
+            
+            // Randomly change curves too
             currentCurveX = (Math.random() - 0.5) * 0.1 * (1 + level * 0.2);
             currentCurveY = (Math.random() - 0.5) * 0.1 * (1 + level * 0.2);
         }
         
+        // Smooth interpolation
+        currentWidthFactor += (targetWidthFactor - currentWidthFactor) * 0.08;
+        currentHeightFactor += (targetHeightFactor - currentHeightFactor) * 0.08;
+        
         if (i > trackLength - 20) {
             currentCurveX = 0;
             currentCurveY = 0;
+            targetWidthFactor = 1.0;
+            targetHeightFactor = 1.0;
         }
 
         let type = 'normal';
-        let widthFactor = 1.0;
         let doorPhaseOffset = 0;
         let doorSpeed = 1 + level * 0.2;
         let doorObj = null;
@@ -50,17 +65,12 @@ export function createTrack(level) {
                 
                 // Randomize timing: 70% slow doors, 30% fast doors
                 if (Math.random() < 0.7) {
-                    // Slow door — comfortable even at high speed
                     doorObj.closeTime = 2.0 + Math.random() * 1.0;
                     doorObj.openTime = 0.8 + Math.random() * 0.4;
                 } else {
-                    // Fast door — requires attention
                     doorObj.closeTime = 1.0 + Math.random() * 0.5;
                     doorObj.openTime = 1.0 + Math.random() * 0.5;
                 }
-            } else if (i % 75 === 0) {
-                type = 'narrow';
-                widthFactor = 0.5;
             } else if (i % 27 === 0) {
                 type = 'mine';
             }
@@ -75,11 +85,12 @@ export function createTrack(level) {
             curveY: currentCurveY,
             colorIndex: colorIndex,
             type: type,
-            widthFactor: widthFactor,
+            widthFactor: currentWidthFactor,
+            heightFactor: currentHeightFactor,
             doorPhaseOffset: doorPhaseOffset,
             doorSpeed: doorSpeed,
-            mineX: type === 'mine' ? (Math.random() - 0.5) * (TUNNEL_WIDTH - 200) : 0,
-            mineY: type === 'mine' ? (Math.random() - 0.5) * (TUNNEL_HEIGHT - 200) : 0,
+            mineX: type === 'mine' ? (Math.random() - 0.5) * (TUNNEL_WIDTH * currentWidthFactor - 200) : 0,
+            mineY: type === 'mine' ? (Math.random() - 0.5) * (TUNNEL_HEIGHT * currentHeightFactor - 200) : 0,
             door: doorObj,
             hue: colorIndex === 0 ? hue1 : hue2,
             passed: false

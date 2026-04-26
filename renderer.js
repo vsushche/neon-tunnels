@@ -93,7 +93,7 @@ export class Renderer {
             const screenY = this.height / 2 + (y - state.shipY) * scale;
             
             const w = (TUNNEL_WIDTH * seg.widthFactor) * scale / 2;
-            const h = TUNNEL_HEIGHT * scale / 2;
+            const h = (TUNNEL_HEIGHT * seg.heightFactor) * scale / 2;
             
             projectedSegments.push({
                 seg: seg,

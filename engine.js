@@ -163,7 +163,7 @@ export class GameEngine {
             }
 
             let currentW = (TUNNEL_WIDTH * currentSeg.widthFactor) / 2;
-            let currentH = TUNNEL_HEIGHT / 2;
+            let currentH = (TUNNEL_HEIGHT * currentSeg.heightFactor) / 2;
             let collisionMargin = SHIP_SIZE;
             let hitWall = false;
             
