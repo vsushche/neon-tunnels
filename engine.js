@@ -71,9 +71,9 @@ export class GameEngine {
         if (state.gameState === 'playing') {
             state.elapsedTime = (now - state.startTime) / 1000;
             
-            if (input.keys.Space) {
+            if (input.controls.throttle) {
                 state.speed += 1500 * dt;
-            } else if (input.keys.Shift) {
+            } else if (input.controls.brake) {
                 state.speed -= 3000 * dt;
             } else {
                 state.speed -= 800 * dt;
@@ -82,10 +82,10 @@ export class GameEngine {
             state.speed = Math.max(0, Math.min(state.speed, state.MAX_SPEED));
             state.cameraZ += state.speed * dt;
             
-            if (input.keys.ArrowLeft) state.shipVX -= SHIP_ACCEL * dt;
-            if (input.keys.ArrowRight) state.shipVX += SHIP_ACCEL * dt;
-            if (input.keys.ArrowUp) state.shipVY -= SHIP_ACCEL * dt;
-            if (input.keys.ArrowDown) state.shipVY += SHIP_ACCEL * dt;
+            if (input.controls.left) state.shipVX -= SHIP_ACCEL * dt;
+            if (input.controls.right) state.shipVX += SHIP_ACCEL * dt;
+            if (input.controls.up) state.shipVY -= SHIP_ACCEL * dt;
+            if (input.controls.down) state.shipVY += SHIP_ACCEL * dt;
             
             state.shipVX *= SHIP_FRICTION;
             state.shipVY *= SHIP_FRICTION;
