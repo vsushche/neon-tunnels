@@ -6,4 +6,5 @@ export const VISIBLE_SEGMENTS = 50; // Increased to see deeper into the tunnel
 
 export const SHIP_ACCEL = 8000;
 export const SHIP_FRICTION = 0.85;
-export const SHIP_SIZE = 100;
+export const SHIP_WIDTH = 200;
+export const SHIP_HEIGHT = 100;

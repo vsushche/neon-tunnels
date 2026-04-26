@@ -1,4 +1,4 @@
-import { SEGMENT_LENGTH, TUNNEL_WIDTH, TUNNEL_HEIGHT, SHIP_ACCEL, SHIP_FRICTION, SHIP_SIZE } from './constants.js';
+import { SEGMENT_LENGTH, TUNNEL_WIDTH, TUNNEL_HEIGHT, SHIP_ACCEL, SHIP_FRICTION, SHIP_WIDTH, SHIP_HEIGHT } from './constants.js';
 import { updateHUD, showFlash, showMenu, hideMenu } from './ui.js';
 import { createTrack } from './track.js';
 
@@ -127,9 +127,37 @@ export class GameEngine {
                 audio.playLaserSound();
             }
 
-            // Update projectiles
+            // Update projectiles and check for hits
             state.projectiles = state.projectiles.filter(p => {
-                return (now - p.startTime) < 5000; // 5.0s lifetime (SLOWED DOWN 10x)
+                const age = now - p.startTime;
+                if (age > 500) return false; // 0.5s lifetime
+                
+                const progress = age / 500;
+                const headZ = p.z + 200 + progress * 15000;
+                
+                // Find segment at laser head
+                const segIdx = Math.floor(headZ / SEGMENT_LENGTH);
+                const seg = state.track[segIdx];
+                
+                if (seg && seg.door) {
+                    const currentW = (TUNNEL_WIDTH * seg.widthFactor) / 2;
+                    const currentH = (TUNNEL_HEIGHT * seg.heightFactor) / 2;
+                    
+                    // Use door's own collision logic to see if laser hits the panels
+                    const result = seg.door.checkCollision(p.x, p.y, 10, 10, currentW, currentH, now);
+                    if (result === 'crash') {
+                        // Only activate/trigger the door if it's relatively close (e.g. < 4000 units)
+                        const distToDoor = seg.door.doorZ - state.cameraZ;
+                        if (distToDoor < 4000) {
+                            seg.door.onHit(now);
+                        } else {
+                            seg.door.lastHitTime = now; 
+                        }
+                        return false; // Laser absorbed by door
+                    }
+                }
+                
+                return headZ < state.cameraZ + 15000; // Clip at distance
             });
             
             state.shipVX *= SHIP_FRICTION;
@@ -164,13 +192,14 @@ export class GameEngine {
 
             let currentW = (TUNNEL_WIDTH * currentSeg.widthFactor) / 2;
             let currentH = (TUNNEL_HEIGHT * currentSeg.heightFactor) / 2;
-            let collisionMargin = SHIP_SIZE;
+            let marginX = SHIP_WIDTH / 2;
+            let marginY = SHIP_HEIGHT / 2;
             let hitWall = false;
             
-            if (state.shipX < -currentW + collisionMargin) { state.shipX = -currentW + collisionMargin; state.shipVX = Math.abs(state.shipVX) * 1.2 + 200; hitWall = true; }
-            if (state.shipX > currentW - collisionMargin) { state.shipX = currentW - collisionMargin; state.shipVX = -Math.abs(state.shipVX) * 1.2 - 200; hitWall = true; }
-            if (state.shipY < -currentH + collisionMargin) { state.shipY = -currentH + collisionMargin; state.shipVY = Math.abs(state.shipVY) * 1.2 + 200; hitWall = true; }
-            if (state.shipY > currentH - collisionMargin) { state.shipY = currentH - collisionMargin; state.shipVY = -Math.abs(state.shipVY) * 1.2 - 200; hitWall = true; }
+            if (state.shipX < -currentW + marginX) { state.shipX = -currentW + marginX; state.shipVX = Math.abs(state.shipVX) * 1.2 + 200; hitWall = true; }
+            if (state.shipX > currentW - marginX) { state.shipX = currentW - marginX; state.shipVX = -Math.abs(state.shipVX) * 1.2 - 200; hitWall = true; }
+            if (state.shipY < -currentH + marginY) { state.shipY = -currentH + marginY; state.shipVY = Math.abs(state.shipVY) * 1.2 + 200; hitWall = true; }
+            if (state.shipY > currentH - marginY) { state.shipY = currentH - marginY; state.shipVY = -Math.abs(state.shipVY) * 1.2 - 200; hitWall = true; }
             
             if (hitWall) {
                 state.speed *= 0.4;
@@ -181,7 +210,7 @@ export class GameEngine {
                 let segDist = state.cameraZ - (currentSegIndex * SEGMENT_LENGTH);
                 if (segDist < 100 && state.speed > 0) {
                     if (currentSeg.door) {
-                        let result = currentSeg.door.checkCollision(state.shipX, state.shipY, SHIP_SIZE, currentW, currentH, now);
+                        let result = currentSeg.door.checkCollision(state.shipX, state.shipY, SHIP_WIDTH, SHIP_HEIGHT, currentW, currentH, now);
                         if (result === 'crash') {
                             this.handleCrash();
                         } else if (result === 'passed') {
@@ -190,7 +219,7 @@ export class GameEngine {
                     } else if (currentSeg.type === 'mine') {
                         let dx = state.shipX - currentSeg.mineX;
                         let dy = state.shipY - currentSeg.mineY;
-                        if (Math.sqrt(dx*dx + dy*dy) < SHIP_SIZE + 50) {
+                        if (Math.sqrt(dx*dx + dy*dy) < SHIP_WIDTH/2 + 50) {
                             this.handleCrash();
                         }
                     }

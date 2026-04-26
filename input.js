@@ -14,10 +14,15 @@ export class InputHandler {
         // Key bindings: keyboard code → control name
         this.keyBindings = {
             'Space':         'fire',
+            'KeyF':          'fire',       // Alternative
             'AltLeft':       'throttle',
             'AltRight':      'throttle',
+            'ShiftLeft':     'throttle',   // Alternative (Alt+Space can be blocked)
+            'ShiftRight':    'throttle',
+            'KeyC':          'throttle',   // Alternative
             'ControlLeft':   'brake',
             'ControlRight':  'brake',
+            'KeyX':          'brake',      // Alternative
             'ArrowLeft':     'left',
             'ArrowRight':    'right',
             'ArrowUp':       'up',
@@ -28,7 +33,7 @@ export class InputHandler {
             'KeyS':          'down',
         };
 
-        const preventDefaultKeys = ['Space', 'AltLeft', 'AltRight', 'ControlLeft', 'ControlRight', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
+        const preventDefaultKeys = ['Space', 'KeyF', 'AltLeft', 'AltRight', 'ShiftLeft', 'ShiftRight', 'ControlLeft', 'ControlRight', 'KeyX', 'KeyC', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
 
         window.addEventListener('keydown', e => {
             const control = this.keyBindings[e.code];

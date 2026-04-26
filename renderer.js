@@ -285,7 +285,7 @@ export class Renderer {
         
         state.projectiles.forEach(p => {
             const age = now - p.startTime;
-            const progress = age / 5000; // SLOWED DOWN 10x
+            const progress = age / 500;
             
             // Laser bolt position in world Z
             const laserSpeed = 15000;

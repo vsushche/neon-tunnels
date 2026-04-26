@@ -1,4 +1,4 @@
-import { SEGMENT_LENGTH } from './constants.js';
+import { SEGMENT_LENGTH, SHIP_WIDTH, SHIP_HEIGHT } from './constants.js';
 
 const ACTIVATION_DISTANCE = 15 * SEGMENT_LENGTH; // 15 segments ahead
 
@@ -14,10 +14,22 @@ export class BaseDoor {
         this.activated = false;
         this.activationTime = 0;
         
+        // Hit system
+        this.lastHitTime = 0;
+        this.hitFlashDuration = 1000; // 1 second red glow
+        
         // Cycle timing (in seconds) — can be overridden per door
         this.closeTime = 1.8;   // time to go from open to fully closed
         this.pauseTime = 0.1;   // time to stay fully closed
         this.openTime = 1.0;    // time to open back up
+    }
+
+    /**
+     * Called when a laser hits the door.
+     */
+    onHit(now) {
+        this.lastHitTime = now;
+        // Specific doors can override what happens on hit
     }
 
     /**
@@ -50,21 +62,17 @@ export class BaseDoor {
         let phase = elapsed % totalCycle;
         
         if (phase < t1) {
-            // Phase 1: closing (0 → 1)
             return phase / t1;
         } else if (phase < t2) {
-            // Phase 2: fully closed
             return 1.0;
         } else if (phase < t3) {
-            // Phase 3: opening (1 → 0)
             return 1.0 - (phase - t2) / this.openTime;
         } else {
-            // Phase 4: fully open (brief pause before next cycle)
             return 0.0;
         }
     }
 
-    checkCollision(shipX, shipY, shipSize, currentW, currentH, now) {
+    checkCollision(shipX, shipY, shipW, shipH, currentW, currentH, now) {
         return 'none';
     }
 
@@ -78,12 +86,12 @@ export class DoubleDoor extends BaseDoor {
         this.orientation = orientation; // 'vertical' or 'horizontal'
     }
 
-    checkCollision(shipX, shipY, shipSize, currentW, currentH, now) {
+    checkCollision(shipX, shipY, shipW, shipH, currentW, currentH, now) {
         let ratio = this.getClosedRatio(now);
         
         if (this.orientation === 'vertical') {
             let safeDistanceY = currentH * (1 - ratio);
-            if (Math.abs(shipY) + shipSize > safeDistanceY) {
+            if (Math.abs(shipY) + shipH/2 > safeDistanceY) {
                 return 'crash';
             } else if (!this.passed) {
                 this.passed = true;
@@ -91,7 +99,7 @@ export class DoubleDoor extends BaseDoor {
             }
         } else if (this.orientation === 'horizontal') {
             let safeDistanceX = currentW * (1 - ratio);
-            if (Math.abs(shipX) + shipSize > safeDistanceX) {
+            if (Math.abs(shipX) + shipW/2 > safeDistanceX) {
                 return 'crash';
             } else if (!this.passed) {
                 this.passed = true;
@@ -104,27 +112,33 @@ export class DoubleDoor extends BaseDoor {
     render(ctx, sx, sy, w, h, now, dim) {
         let ratio = this.getClosedRatio(now);
         if (ratio > 0) {
+            let hue = this.hue;
+            let saturation = 100;
             let lightness = 50 * dim;
-            let strokeAlpha = dim;
-            ctx.fillStyle = `hsl(${this.hue}, 100%, ${lightness}%)`;
-            ctx.strokeStyle = `rgba(255, 255, 255, ${strokeAlpha})`;
-            ctx.lineWidth = 3;
+
+            // Flash red on hit
+            const hitAge = now - this.lastHitTime;
+            if (hitAge < this.hitFlashDuration) {
+                const hitFactor = 1.0 - hitAge / this.hitFlashDuration;
+                hue = 0; // Red
+                lightness += hitFactor * 40;
+            }
+
+            ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+            ctx.strokeStyle = `rgba(255, 255, 255, ${dim})`;
+            ctx.lineWidth = 2;
 
             if (this.orientation === 'vertical') {
                 let doorH = h * ratio;
-                
                 ctx.fillRect(sx - w, sy - h, w * 2, doorH);
-                ctx.fillRect(sx - w, sy + h - doorH, w * 2, doorH);
-                
                 ctx.strokeRect(sx - w, sy - h, w * 2, doorH);
+                ctx.fillRect(sx - w, sy + h - doorH, w * 2, doorH);
                 ctx.strokeRect(sx - w, sy + h - doorH, w * 2, doorH);
-            } else if (this.orientation === 'horizontal') {
+            } else {
                 let doorW = w * ratio;
-                
                 ctx.fillRect(sx - w, sy - h, doorW, h * 2);
-                ctx.fillRect(sx + w - doorW, sy - h, doorW, h * 2);
-                
                 ctx.strokeRect(sx - w, sy - h, doorW, h * 2);
+                ctx.fillRect(sx + w - doorW, sy - h, doorW, h * 2);
                 ctx.strokeRect(sx + w - doorW, sy - h, doorW, h * 2);
             }
         }
@@ -137,22 +151,22 @@ export class SingleDoor extends BaseDoor {
         this.origin = origin; // 'top', 'bottom', 'left', 'right'
     }
 
-    checkCollision(shipX, shipY, shipSize, currentW, currentH, now) {
+    checkCollision(shipX, shipY, shipW, shipH, currentW, currentH, now) {
         let ratio = this.getClosedRatio(now);
         let crashed = false;
 
         if (this.origin === 'top') {
             let doorEdgeY = -currentH + (2 * currentH * ratio);
-            if (shipY - shipSize < doorEdgeY) crashed = true;
+            if (shipY - shipH/2 < doorEdgeY) crashed = true;
         } else if (this.origin === 'bottom') {
             let doorEdgeY = currentH - (2 * currentH * ratio);
-            if (shipY + shipSize > doorEdgeY) crashed = true;
+            if (shipY + shipH/2 > doorEdgeY) crashed = true;
         } else if (this.origin === 'left') {
             let doorEdgeX = -currentW + (2 * currentW * ratio);
-            if (shipX - shipSize < doorEdgeX) crashed = true;
+            if (shipX - shipW/2 < doorEdgeX) crashed = true;
         } else if (this.origin === 'right') {
             let doorEdgeX = currentW - (2 * currentW * ratio);
-            if (shipX + shipSize > doorEdgeX) crashed = true;
+            if (shipX + shipW/2 > doorEdgeX) crashed = true;
         }
 
         if (crashed) return 'crash';
@@ -167,11 +181,21 @@ export class SingleDoor extends BaseDoor {
     render(ctx, sx, sy, w, h, now, dim) {
         let ratio = this.getClosedRatio(now);
         if (ratio > 0) {
+            let hue = this.hue;
+            let saturation = 100;
             let lightness = 50 * dim;
-            let strokeAlpha = dim;
-            ctx.fillStyle = `hsl(${this.hue}, 100%, ${lightness}%)`;
-            ctx.strokeStyle = `rgba(255, 255, 255, ${strokeAlpha})`;
-            ctx.lineWidth = 3;
+
+            // Flash red on hit
+            const hitAge = now - this.lastHitTime;
+            if (hitAge < this.hitFlashDuration) {
+                const hitFactor = 1.0 - hitAge / this.hitFlashDuration;
+                hue = 0; // Red
+                lightness += hitFactor * 40;
+            }
+
+            ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+            ctx.strokeStyle = `rgba(255, 255, 255, ${dim})`;
+            ctx.lineWidth = 2;
 
             if (this.origin === 'top') {
                 let doorH = h * 2 * ratio;
@@ -198,7 +222,13 @@ export class GateDoor extends BaseDoor {
     constructor(direction, speed, phaseOffset) {
         super(speed, phaseOffset);
         this.direction = direction; // 'horizontal' or 'vertical'
-        this.gapRatio = 0.35; // gap is 35% of tunnel dimension
+        this.gapRatio = 0.35; // Default 35% of tunnel dimension
+    }
+
+    getGapHalfSize(currentDimension, minSize) {
+        let halfSize = currentDimension * this.gapRatio;
+        const minHalfSize = (minSize * 1.5) / 2;
+        return Math.max(halfSize, minHalfSize);
     }
 
     /**
@@ -213,23 +243,23 @@ export class GateDoor extends BaseDoor {
         return Math.sin(elapsed * this.speed * 0.75);
     }
 
-    checkCollision(shipX, shipY, shipSize, currentW, currentH, now) {
+    checkCollision(shipX, shipY, shipW, shipH, currentW, currentH, now) {
         let gapPos = this.getGapPosition(now);
 
         if (this.direction === 'horizontal') {
-            let gapCenterX = gapPos * currentW * (1 - this.gapRatio);
-            let gapHalfW = currentW * this.gapRatio;
+            let gapHalfW = this.getGapHalfSize(currentW, shipW);
+            let gapCenterX = gapPos * (currentW - gapHalfW);
 
-            if (shipX + shipSize > gapCenterX + gapHalfW ||
-                shipX - shipSize < gapCenterX - gapHalfW) {
+            if (shipX + shipW/2 > gapCenterX + gapHalfW ||
+                shipX - shipW/2 < gapCenterX - gapHalfW) {
                 return 'crash';
             }
         } else {
-            let gapCenterY = gapPos * currentH * (1 - this.gapRatio);
-            let gapHalfH = currentH * this.gapRatio;
+            let gapHalfH = this.getGapHalfSize(currentH, shipH);
+            let gapCenterY = gapPos * (currentH - gapHalfH);
 
-            if (shipY + shipSize > gapCenterY + gapHalfH ||
-                shipY - shipSize < gapCenterY - gapHalfH) {
+            if (shipY + shipH/2 > gapCenterY + gapHalfH ||
+                shipY - shipH/2 < gapCenterY - gapHalfH) {
                 return 'crash';
             }
         }
@@ -243,15 +273,25 @@ export class GateDoor extends BaseDoor {
 
     render(ctx, sx, sy, w, h, now, dim) {
         let gapPos = this.getGapPosition(now);
+        let hue = this.hue;
+        let saturation = 100;
         let lightness = 50 * dim;
-        let strokeAlpha = dim;
-        ctx.fillStyle = `hsl(${this.hue}, 100%, ${lightness}%)`;
-        ctx.strokeStyle = `rgba(255, 255, 255, ${strokeAlpha})`;
+
+        // Flash red on hit
+        const hitAge = now - this.lastHitTime;
+        if (hitAge < this.hitFlashDuration) {
+            const hitFactor = 1.0 - hitAge / this.hitFlashDuration;
+            hue = 0; // Red
+            lightness += hitFactor * 40;
+        }
+
+        ctx.fillStyle = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+        ctx.strokeStyle = `rgba(255, 255, 255, ${dim})`;
         ctx.lineWidth = 3;
 
         if (this.direction === 'horizontal') {
-            let gapCenterX = gapPos * w * (1 - this.gapRatio);
-            let gapHalfW = w * this.gapRatio;
+            let gapHalfW = this.getGapHalfSize(w, SHIP_WIDTH);
+            let gapCenterX = gapPos * (w - gapHalfW);
 
             // Left panel
             let leftPanelW = w + gapCenterX - gapHalfW;
@@ -268,8 +308,8 @@ export class GateDoor extends BaseDoor {
                 ctx.strokeRect(rightStart, sy - h, rightPanelW, h * 2);
             }
         } else {
-            let gapCenterY = gapPos * h * (1 - this.gapRatio);
-            let gapHalfH = h * this.gapRatio;
+            let gapHalfH = this.getGapHalfSize(h, SHIP_HEIGHT);
+            let gapCenterY = gapPos * (h - gapHalfH);
 
             // Top panel
             let topPanelH = h + gapCenterY - gapHalfH;
@@ -296,6 +336,19 @@ export class SensorDoor extends BaseDoor {
         this.hue = 280; // Purple/Violet for sensors
     }
 
+    // Sensor doors don't open by proximity! Only by laser hit.
+    checkActivation(cameraZ, now) {
+        // Do nothing
+    }
+
+    onHit(now) {
+        super.onHit(now);
+        if (!this.activated) {
+            this.activated = true;
+            this.activationTime = now;
+        }
+    }
+
     getClosedRatio(now) {
         if (!this.activated) return 1.0; // Initially closed
         
@@ -304,17 +357,17 @@ export class SensorDoor extends BaseDoor {
         return Math.max(0, 1.0 - elapsed / this.openTime);
     }
 
-    checkCollision(shipX, shipY, shipSize, currentW, currentH, now) {
+    checkCollision(shipX, shipY, shipW, shipH, currentW, currentH, now) {
         let ratio = this.getClosedRatio(now);
         
         if (this.orientation === 'vertical') {
             let safeDistanceY = currentH * (1 - ratio);
-            if (Math.abs(shipY) + shipSize > safeDistanceY) {
+            if (Math.abs(shipY) + shipH/2 > safeDistanceY) {
                 return 'crash';
             }
         } else {
             let safeDistanceX = currentW * (1 - ratio);
-            if (Math.abs(shipX) + shipSize > safeDistanceX) {
+            if (Math.abs(shipX) + shipW/2 > safeDistanceX) {
                 return 'crash';
             }
         }
@@ -328,10 +381,23 @@ export class SensorDoor extends BaseDoor {
 
     render(ctx, sx, sy, w, h, now, dim) {
         let ratio = this.getClosedRatio(now);
-        let lightness = 40 * dim;
         let alpha = dim * 0.8;
         
-        ctx.fillStyle = `hsla(${this.hue}, 80%, ${lightness}%, ${alpha})`;
+        // Base color
+        let hue = this.hue;
+        let saturation = 80;
+        let lightness = 40 * dim;
+
+        // Flash red on hit
+        const hitAge = now - this.lastHitTime;
+        if (hitAge < this.hitFlashDuration) {
+            const hitFactor = 1.0 - hitAge / this.hitFlashDuration;
+            hue = 0; // Red
+            saturation = 100;
+            lightness += hitFactor * 40;
+        }
+        
+        ctx.fillStyle = `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha})`;
         ctx.strokeStyle = `rgba(255, 255, 255, ${dim})`;
         ctx.lineWidth = 2;
 
