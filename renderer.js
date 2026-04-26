@@ -109,7 +109,7 @@ export class Renderer {
             const p2 = projectedSegments[i-1];
             
             let dim = 1 - (i / VISIBLE_SEGMENTS);
-            if (p1.seg.index >= state.trackLength - 5) {
+            if (p1.seg.index >= state.trackLength - 15) {
                 dim += 0.5;
             }
             

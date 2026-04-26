@@ -2,9 +2,11 @@ import { SEGMENT_LENGTH, TUNNEL_WIDTH, TUNNEL_HEIGHT, SHIP_ACCEL, SHIP_FRICTION,
 import { updateHUD, showFlash, showMenu, hideMenu } from './ui.js';
 import { createTrack } from './track.js';
 
+const EXIT_ZONE_SEGMENTS = 15;
+
 export class GameState {
     constructor() {
-        this.gameState = 'menu'; // menu, playing, win
+        this.gameState = 'menu'; // menu, playing, exiting, win
         this.currentLevel = 1;
         this.startTime = 0;
         this.elapsedTime = 0;
@@ -101,8 +103,10 @@ export class GameEngine {
                 }
             }
             
-            if (currentSegIndex >= state.trackLength + 10) {
-                this.handleWin();
+            // Enter exit zone — switch to cinematic autopilot
+            if (currentSegIndex >= state.trackLength - EXIT_ZONE_SEGMENTS) {
+                state.gameState = 'exiting';
+                audio.playVictoryMelody();
                 return;
             }
             
@@ -125,8 +129,7 @@ export class GameEngine {
             
             if (hitWall) {
                 state.speed *= 0.4;
-                audio.playCrashSound();
-                showFlash();
+                audio.playScrapeSound();
             }
             
             if (currentSegIndex > 0) {
@@ -150,6 +153,23 @@ export class GameEngine {
             }
             
             updateHUD(state);
+            audio.updateEngineSound(state.speed, state.MAX_SPEED);
+        } else if (state.gameState === 'exiting') {
+            // Autopilot: accelerate to max and center the ship
+            state.speed += (state.MAX_SPEED - state.speed) * 2 * dt;
+            state.cameraZ += state.speed * dt;
+            
+            // Smoothly center the ship
+            state.shipX *= 0.92;
+            state.shipY *= 0.92;
+            state.shipVX *= 0.8;
+            state.shipVY *= 0.8;
+            
+            let currentSegIndex = Math.floor(state.cameraZ / SEGMENT_LENGTH);
+            if (currentSegIndex >= state.trackLength + 15) {
+                this.handleWin();
+            }
+            
             audio.updateEngineSound(state.speed, state.MAX_SPEED);
         } else if (state.gameState === 'win') {
             state.speed *= 0.95;
