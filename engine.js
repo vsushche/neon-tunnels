@@ -4,9 +4,16 @@ import { createTrack } from './track.js';
 
 const EXIT_ZONE_SEGMENTS = 15;
 
+export const GAME_STATES = Object.freeze({
+    MENU:    'menu',
+    PLAYING: 'playing',
+    EXITING: 'exiting',
+    WIN:     'win'
+});
+
 export class GameState {
     constructor() {
-        this.gameState = 'menu'; // menu, playing, exiting, win
+        this.gameState = GAME_STATES.MENU;
         this.currentLevel = 1;
         this.startTime = 0;
         this.elapsedTime = 0;
@@ -43,14 +50,14 @@ export class GameEngine {
         this.state.shipVX = 0;
         this.state.shipVY = 0;
         
-        this.state.gameState = 'playing';
+        this.state.gameState = GAME_STATES.PLAYING;
         hideMenu();
         this.audio.startEngineSound();
         updateHUD(this.state);
     }
 
     handleCrash() {
-        if (this.state.gameState !== 'playing') return;
+        if (this.state.gameState !== GAME_STATES.PLAYING) return;
         this.audio.playCrashSound();
         showFlash();
         
@@ -60,7 +67,7 @@ export class GameEngine {
     }
 
     handleWin() {
-        this.state.gameState = 'win';
+        this.state.gameState = GAME_STATES.WIN;
         this.audio.stopEngineSound();
         showMenu(`MISSION COMPLETE! LEVEL ${this.state.currentLevel} CLEAR.`, "#00ffcc", "NEXT LEVEL");
     }
@@ -68,7 +75,7 @@ export class GameEngine {
     update(dt, now) {
         const { state, input, audio } = this;
 
-        if (state.gameState === 'playing') {
+        if (state.gameState === GAME_STATES.PLAYING) {
             state.elapsedTime = (now - state.startTime) / 1000;
             
             if (input.controls.throttle) {
@@ -105,7 +112,7 @@ export class GameEngine {
             
             // Enter exit zone — switch to cinematic autopilot
             if (currentSegIndex >= state.trackLength - EXIT_ZONE_SEGMENTS) {
-                state.gameState = 'exiting';
+                state.gameState = GAME_STATES.EXITING;
                 audio.playVictoryMelody();
                 return;
             }
@@ -154,7 +161,7 @@ export class GameEngine {
             
             updateHUD(state);
             audio.updateEngineSound(state.speed, state.MAX_SPEED);
-        } else if (state.gameState === 'exiting') {
+        } else if (state.gameState === GAME_STATES.EXITING) {
             // Autopilot: accelerate to max and center the ship
             state.speed += (state.MAX_SPEED - state.speed) * 2 * dt;
             state.cameraZ += state.speed * dt;
@@ -171,7 +178,7 @@ export class GameEngine {
             }
             
             audio.updateEngineSound(state.speed, state.MAX_SPEED);
-        } else if (state.gameState === 'win') {
+        } else if (state.gameState === GAME_STATES.WIN) {
             state.speed *= 0.95;
             state.cameraZ += state.speed * dt;
             audio.updateEngineSound(state.speed, state.MAX_SPEED);

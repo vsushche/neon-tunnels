@@ -1,6 +1,6 @@
 import { InputHandler } from './input.js';
 import { Renderer } from './renderer.js';
-import { GameEngine } from './engine.js';
+import { GameEngine, GAME_STATES } from './engine.js';
 import { onStartBtnClick } from './ui.js';
 import { AudioManager } from './audio.js';
 
@@ -11,7 +11,7 @@ const engine = new GameEngine(audio, input);
 
 onStartBtnClick(() => {
     audio.init();
-    if (engine.state.gameState === 'win') {
+    if (engine.state.gameState === GAME_STATES.WIN) {
         engine.start(engine.state.currentLevel + 1);
     } else {
         engine.start(1);
