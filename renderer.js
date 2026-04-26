@@ -293,10 +293,20 @@ export class Renderer {
                 this.ctx.closePath();
                 
                 this.ctx.fillStyle = '#ff1a1a'; // bright scarlet core
-                this.ctx.shadowBlur = Math.max(5, 50 * tailScale); // glow decays in distance
+                
+                // Fade out based on distance, not time! 
+                // Doubled fade distance so it doesn't fade too aggressively
+                const visibleDistance = 8000;
+                const distFade = Math.max(0, 1 - (tailRelZ / visibleDistance)); 
+                this.ctx.globalAlpha = distFade * distFade; // Quadratic fade
+                
+                this.ctx.shadowBlur = Math.max(2, 50 * tailScale * distFade); 
                 this.ctx.shadowColor = '#ff0000';
+                
                 this.ctx.fill();
+                
                 this.ctx.shadowBlur = 0;
+                this.ctx.globalAlpha = 1.0;
             });
         });
     }
