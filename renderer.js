@@ -1,5 +1,6 @@
 import { SEGMENT_LENGTH, TUNNEL_WIDTH, TUNNEL_HEIGHT, FOCAL_LENGTH, VISIBLE_SEGMENTS } from './constants.js';
 import { Starfield } from './stars.js';
+import { EngineStatus } from './engine.js';
 
 export class Renderer {
     constructor() {
@@ -41,6 +42,10 @@ export class Renderer {
         
         this.renderStars(state, baseIndex);
         this.renderTunnel(state, now, baseIndex);
+        
+        if (state.gameState === EngineStatus.COUNTDOWN) {
+            this.renderCountdown(state);
+        }
     }
 
     renderStars(state, baseIndex) {
@@ -171,5 +176,50 @@ export class Renderer {
             this.ctx.fillStyle = '#ffffff';
             this.ctx.fill();
         }
+    }
+
+    renderCountdown(state) {
+        const time = state.countdownTime;
+        if (time <= 0) return;
+
+        let text = "";
+        let progress = 0;
+
+        if (time > 2.25) {
+            text = "3";
+            progress = (3.0 - time) / 0.75;
+        } else if (time > 1.5) {
+            text = "2";
+            progress = (2.25 - time) / 0.75;
+        } else if (time > 0.75) {
+            text = "1";
+            progress = (1.5 - time) / 0.75;
+        } else {
+            text = "GO!";
+            progress = (0.75 - time) / 0.75;
+        }
+
+        // Project text: fly from z=-200 to z=5000
+        const z = -200 + progress * 5200;
+        const scale = FOCAL_LENGTH / (FOCAL_LENGTH + z);
+        
+        if (scale <= 0) return;
+
+        const fontSize = Math.floor(400 * scale);
+        this.ctx.font = `bold ${fontSize}px "Orbitron", sans-serif`;
+        this.ctx.textAlign = 'center';
+        this.ctx.textBaseline = 'middle';
+        
+        // Wireframe effect
+        this.ctx.strokeStyle = `rgba(0, 255, 255, ${1.0 - progress * 0.8})`;
+        this.ctx.lineWidth = Math.max(1, 5 * scale);
+        
+        this.ctx.strokeText(text, this.width / 2, this.height / 2);
+        
+        // Subtle glow
+        this.ctx.shadowBlur = 15 * scale;
+        this.ctx.shadowColor = '#00ffff';
+        this.ctx.strokeText(text, this.width / 2, this.height / 2);
+        this.ctx.shadowBlur = 0;
     }
 }

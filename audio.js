@@ -147,4 +147,24 @@ export class AudioManager {
             osc.stop(now + note.time + note.dur + 0.05);
         }
     }
+
+    playCountdownBeep(isHigh = false) {
+        if (!this.audioCtx) return;
+        const now = this.audioCtx.currentTime;
+        const osc = this.audioCtx.createOscillator();
+        const gain = this.audioCtx.createGain();
+        
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(isHigh ? 880 : 440, now);
+        
+        gain.gain.setValueAtTime(0, now);
+        gain.gain.linearRampToValueAtTime(0.1, now + 0.01);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+        
+        osc.connect(gain);
+        gain.connect(this.audioCtx.destination);
+        
+        osc.start(now);
+        osc.stop(now + 0.15);
+    }
 }

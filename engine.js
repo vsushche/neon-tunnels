@@ -5,10 +5,11 @@ import { createTrack } from './track.js';
 const EXIT_ZONE_SEGMENTS = 15;
 
 export const EngineStatus = Object.freeze({
-    MENU:    'menu',
-    PLAYING: 'playing',
-    EXITING: 'exiting',
-    WIN:     'win'
+    MENU:      'menu',
+    COUNTDOWN: 'countdown',
+    PLAYING:   'playing',
+    EXITING:   'exiting',
+    WIN:       'win'
 });
 
 export class GameState {
@@ -26,6 +27,8 @@ export class GameState {
         this.track = [];
         this.trackLength = 0;
         this.MAX_SPEED = 0;
+        this.countdownTime = 0;
+        this.lastBeepStep = -1;
     }
 }
 
@@ -50,7 +53,9 @@ export class GameEngine {
         this.state.shipVX = 0;
         this.state.shipVY = 0;
         
-        this.state.gameState = EngineStatus.PLAYING;
+        this.state.gameState = EngineStatus.COUNTDOWN;
+        this.state.countdownTime = 3; // 3 seconds
+        this.state.lastBeepStep = -1;
         hideMenu();
         this.audio.startEngineSound();
         updateHUD(this.state);
@@ -75,7 +80,21 @@ export class GameEngine {
     update(dt, now) {
         const { state, input, audio } = this;
 
-        if (state.gameState === EngineStatus.PLAYING) {
+        if (state.gameState === EngineStatus.COUNTDOWN) {
+            const currentStep = Math.floor(state.countdownTime / 0.75);
+            if (currentStep !== state.lastBeepStep && currentStep >= 0) {
+                audio.playCountdownBeep(currentStep === 0);
+                state.lastBeepStep = currentStep;
+            }
+            
+            state.countdownTime -= dt;
+            if (state.countdownTime <= 0) {
+                state.gameState = EngineStatus.PLAYING;
+                state.startTime = now; // reset start time to actual play start
+            }
+            updateHUD(state);
+            audio.updateEngineSound(0, state.MAX_SPEED);
+        } else if (state.gameState === EngineStatus.PLAYING) {
             state.elapsedTime = (now - state.startTime) / 1000;
             
             if (input.controls.throttle) {
