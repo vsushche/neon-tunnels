@@ -2,34 +2,29 @@ import { SEGMENT_LENGTH, TUNNEL_WIDTH, TUNNEL_HEIGHT, SHIP_ACCEL, SHIP_FRICTION,
 import { keys } from './input.js';
 import { updateHUD, showFlash, showMenu, hideMenu } from './ui.js';
 import { createTrack } from './track.js';
-import { playCrashSound, playDoorPassSound, startEngineSound, updateEngineSound, stopEngineSound } from './audio.js';
 
 export const state = {
     gameState: 'menu', // menu, playing, win
     currentLevel: 1,
     startTime: 0,
-    elapsedTime: 0,
     cameraZ: 0,
     speed: 0,
-    MAX_SPEED: 2500,
     shipX: 0,
     shipY: 0,
     shipVX: 0,
     shipVY: 0,
     track: [],
-    trackLength: 0
+    trackLength: 0,
+    MAX_SPEED: 0
 };
 
-export function startGame(level) {
-    state.currentLevel = level;
-    state.startTime = performance.now();
-    state.elapsedTime = 0;
-    
+export function startGame(level, audio) {
     const trackData = createTrack(level);
     state.track = trackData.track;
     state.trackLength = trackData.trackLength;
     state.MAX_SPEED = trackData.maxSpeed;
-    
+    state.currentLevel = level;
+    state.startTime = performance.now();
     state.cameraZ = 0;
     state.speed = 0;
     state.shipX = 0;
@@ -39,31 +34,27 @@ export function startGame(level) {
     
     state.gameState = 'playing';
     hideMenu();
-    startEngineSound();
+    audio.startEngineSound();
     updateHUD(state);
 }
 
-export function handleCrash() {
+export function handleCrash(audio) {
     if (state.gameState !== 'playing') return;
-    playCrashSound();
+    audio.playCrashSound();
     showFlash();
-
-    state.speed = 0; 
-    state.cameraZ -= 300;
     
-    updateHUD(state);
+    state.speed *= 0.5;
+    state.cameraZ -= 200;
+    if (state.cameraZ < 0) state.cameraZ = 0;
 }
 
-export function handleWin() {
-    if (state.gameState !== 'playing') return;
+function handleWin(audio) {
     state.gameState = 'win';
-    setTimeout(() => {
-        showMenu("SECTOR CLEARED", "#00ffcc", "NEXT SECTOR");
-        stopEngineSound();
-    }, 1500);
+    audio.stopEngineSound();
+    showMenu(`MISSION COMPLETE! LEVEL ${state.currentLevel} CLEAR.`, "#00ffcc", "NEXT LEVEL");
 }
 
-export function updateEngine(dt, now) {
+export function updateEngine(dt, now, audio) {
     if (state.gameState === 'playing') {
         state.elapsedTime = (now - state.startTime) / 1000;
         
@@ -91,13 +82,17 @@ export function updateEngine(dt, now) {
         
         let currentSegIndex = Math.floor(state.cameraZ / SEGMENT_LENGTH);
         
-        if (currentSegIndex >= state.trackLength - 2) {
-            handleWin();
+        if (currentSegIndex >= state.trackLength + 10) {
+            handleWin(audio);
             return;
         }
         
         let currentSeg = state.track[currentSegIndex];
-        if (!currentSeg) return;
+        if (!currentSeg) {
+            updateHUD(state);
+            audio.updateEngineSound(state.speed, state.MAX_SPEED);
+            return;
+        }
 
         let currentW = (TUNNEL_WIDTH * currentSeg.widthFactor) / 2;
         let currentH = TUNNEL_HEIGHT / 2;
@@ -111,7 +106,7 @@ export function updateEngine(dt, now) {
         
         if (hitWall) {
             state.speed *= 0.4;
-            playCrashSound();
+            audio.playCrashSound();
             showFlash();
         }
         
@@ -121,25 +116,25 @@ export function updateEngine(dt, now) {
                 if (currentSeg.door) {
                     let result = currentSeg.door.checkCollision(state.shipX, state.shipY, SHIP_SIZE, currentW, currentH, now);
                     if (result === 'crash') {
-                        handleCrash();
+                        handleCrash(audio);
                     } else if (result === 'passed') {
-                        playDoorPassSound();
+                        audio.playDoorPassSound();
                     }
                 } else if (currentSeg.type === 'mine') {
                     let dx = state.shipX - currentSeg.mineX;
                     let dy = state.shipY - currentSeg.mineY;
                     if (Math.sqrt(dx*dx + dy*dy) < SHIP_SIZE + 50) {
-                        handleCrash();
+                        handleCrash(audio);
                     }
                 }
             }
         }
         
         updateHUD(state);
-        updateEngineSound(state.speed, state.MAX_SPEED);
+        audio.updateEngineSound(state.speed, state.MAX_SPEED);
     } else if (state.gameState === 'win') {
         state.speed *= 0.95;
         state.cameraZ += state.speed * dt;
-        updateEngineSound(state.speed, state.MAX_SPEED);
+        audio.updateEngineSound(state.speed, state.MAX_SPEED);
     }
 }

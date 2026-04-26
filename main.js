@@ -1,17 +1,19 @@
 import { initInput } from './input.js';
-import { initRenderer, render } from './renderer.js';
+import { Renderer } from './renderer.js';
 import { state, updateEngine, startGame } from './engine.js';
 import { onStartBtnClick } from './ui.js';
+import { AudioManager } from './audio.js';
 
 initInput();
-initRenderer();
+const renderer = new Renderer();
+const audio = new AudioManager();
 
 onStartBtnClick(() => {
-    window.initAudio();
+    audio.init();
     if (state.gameState === 'win') {
-        startGame(state.currentLevel + 1);
+        startGame(state.currentLevel + 1, audio);
     } else {
-        startGame(1);
+        startGame(1, audio);
     }
 });
 
@@ -22,8 +24,8 @@ function gameLoop(now) {
     lastTime = now;
     if (dt > 0.1) dt = 0.1;
 
-    updateEngine(dt, now);
-    render(state, now);
+    updateEngine(dt, now, audio);
+    renderer.render(state, now);
     
     requestAnimationFrame(gameLoop);
 }

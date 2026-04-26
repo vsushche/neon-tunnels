@@ -3,6 +3,7 @@ export class BaseDoor {
         this.speed = speed;
         this.phaseOffset = phaseOffset;
         this.passed = false;
+        this.hue = Math.floor(Math.random() * 360);
     }
 
     getClosedRatio(now) {
@@ -14,7 +15,7 @@ export class BaseDoor {
         return 'none';
     }
 
-    render(ctx, sx, sy, w, h, now) {
+    render(ctx, sx, sy, w, h, now, dim) {
     }
 }
 
@@ -47,11 +48,13 @@ export class DoubleDoor extends BaseDoor {
         return 'none';
     }
 
-    render(ctx, sx, sy, w, h, now) {
+    render(ctx, sx, sy, w, h, now, dim) {
         let ratio = this.getClosedRatio(now);
         if (ratio > 0) {
-            ctx.fillStyle = `hsl(340, 100%, 50%)`;
-            ctx.strokeStyle = '#fff';
+            let lightness = 50 * dim;
+            let strokeAlpha = dim;
+            ctx.fillStyle = `hsl(${this.hue}, 100%, ${lightness}%)`;
+            ctx.strokeStyle = `rgba(255, 255, 255, ${strokeAlpha})`;
             ctx.lineWidth = 3;
 
             if (this.orientation === 'vertical') {
@@ -108,11 +111,13 @@ export class SingleDoor extends BaseDoor {
         return 'none';
     }
 
-    render(ctx, sx, sy, w, h, now) {
+    render(ctx, sx, sy, w, h, now, dim) {
         let ratio = this.getClosedRatio(now);
         if (ratio > 0) {
-            ctx.fillStyle = `hsl(340, 100%, 50%)`;
-            ctx.strokeStyle = '#fff';
+            let lightness = 50 * dim;
+            let strokeAlpha = dim;
+            ctx.fillStyle = `hsl(${this.hue}, 100%, ${lightness}%)`;
+            ctx.strokeStyle = `rgba(255, 255, 255, ${strokeAlpha})`;
             ctx.lineWidth = 3;
 
             if (this.origin === 'top') {
