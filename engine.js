@@ -93,6 +93,14 @@ export class GameEngine {
             
             let currentSegIndex = Math.floor(state.cameraZ / SEGMENT_LENGTH);
             
+            // Activate doors ahead of the player
+            for (let ahead = 0; ahead < 20; ahead++) {
+                let idx = currentSegIndex + ahead;
+                if (idx >= 0 && idx < state.trackLength && state.track[idx].door) {
+                    state.track[idx].door.checkActivation(state.cameraZ, now);
+                }
+            }
+            
             if (currentSegIndex >= state.trackLength + 10) {
                 this.handleWin();
                 return;

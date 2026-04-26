@@ -43,6 +43,7 @@ export function createTrack(level) {
                     let origin = origins[Math.floor(Math.random() * origins.length)];
                     doorObj = new SingleDoor(origin, doorSpeed, doorPhaseOffset);
                 }
+                doorObj.doorZ = i * SEGMENT_LENGTH;
             } else if (i % 75 === 0) {
                 type = 'narrow';
                 widthFactor = 0.5;
