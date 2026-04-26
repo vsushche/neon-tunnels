@@ -1,5 +1,4 @@
 import { SEGMENT_LENGTH, TUNNEL_WIDTH, TUNNEL_HEIGHT, SHIP_ACCEL, SHIP_FRICTION, SHIP_SIZE } from './constants.js';
-import { keys } from './input.js';
 import { updateHUD, showFlash, showMenu, hideMenu } from './ui.js';
 import { createTrack } from './track.js';
 
@@ -54,13 +53,13 @@ function handleWin(audio) {
     showMenu(`MISSION COMPLETE! LEVEL ${state.currentLevel} CLEAR.`, "#00ffcc", "NEXT LEVEL");
 }
 
-export function updateEngine(dt, now, audio) {
+export function updateEngine(dt, now, audio, input) {
     if (state.gameState === 'playing') {
         state.elapsedTime = (now - state.startTime) / 1000;
         
-        if (keys.Space) {
+        if (input.keys.Space) {
             state.speed += 1500 * dt;
-        } else if (keys.Shift) {
+        } else if (input.keys.Shift) {
             state.speed -= 3000 * dt;
         } else {
             state.speed -= 800 * dt;
@@ -69,10 +68,10 @@ export function updateEngine(dt, now, audio) {
         state.speed = Math.max(0, Math.min(state.speed, state.MAX_SPEED));
         state.cameraZ += state.speed * dt;
         
-        if (keys.ArrowLeft) state.shipVX -= SHIP_ACCEL * dt;
-        if (keys.ArrowRight) state.shipVX += SHIP_ACCEL * dt;
-        if (keys.ArrowUp) state.shipVY -= SHIP_ACCEL * dt;
-        if (keys.ArrowDown) state.shipVY += SHIP_ACCEL * dt;
+        if (input.keys.ArrowLeft) state.shipVX -= SHIP_ACCEL * dt;
+        if (input.keys.ArrowRight) state.shipVX += SHIP_ACCEL * dt;
+        if (input.keys.ArrowUp) state.shipVY -= SHIP_ACCEL * dt;
+        if (input.keys.ArrowDown) state.shipVY += SHIP_ACCEL * dt;
         
         state.shipVX *= SHIP_FRICTION;
         state.shipVY *= SHIP_FRICTION;

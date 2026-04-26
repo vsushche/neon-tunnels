@@ -1,10 +1,10 @@
-import { initInput } from './input.js';
+import { InputHandler } from './input.js';
 import { Renderer } from './renderer.js';
 import { state, updateEngine, startGame } from './engine.js';
 import { onStartBtnClick } from './ui.js';
 import { AudioManager } from './audio.js';
 
-initInput();
+const input = new InputHandler();
 const renderer = new Renderer();
 const audio = new AudioManager();
 
@@ -24,7 +24,7 @@ function gameLoop(now) {
     lastTime = now;
     if (dt > 0.1) dt = 0.1;
 
-    updateEngine(dt, now, audio);
+    updateEngine(dt, now, audio, input);
     renderer.render(state, now);
     
     requestAnimationFrame(gameLoop);
