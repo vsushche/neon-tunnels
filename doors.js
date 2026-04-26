@@ -288,3 +288,77 @@ export class GateDoor extends BaseDoor {
         }
     }
 }
+export class SensorDoor extends BaseDoor {
+    constructor(orientation, speed, phaseOffset) {
+        super(speed, phaseOffset);
+        this.orientation = orientation; // 'vertical' or 'horizontal'
+        this.openTime = 1.2; // Takes 1.2s to open fully
+        this.hue = 280; // Purple/Violet for sensors
+    }
+
+    getClosedRatio(now) {
+        if (!this.activated) return 1.0; // Initially closed
+        
+        let elapsed = (now - this.activationTime) / 1000;
+        // Opens once and stays open (linear transition)
+        return Math.max(0, 1.0 - elapsed / this.openTime);
+    }
+
+    checkCollision(shipX, shipY, shipSize, currentW, currentH, now) {
+        let ratio = this.getClosedRatio(now);
+        
+        if (this.orientation === 'vertical') {
+            let safeDistanceY = currentH * (1 - ratio);
+            if (Math.abs(shipY) + shipSize > safeDistanceY) {
+                return 'crash';
+            }
+        } else {
+            let safeDistanceX = currentW * (1 - ratio);
+            if (Math.abs(shipX) + shipSize > safeDistanceX) {
+                return 'crash';
+            }
+        }
+
+        if (!this.passed && ratio <= 0.05) {
+            this.passed = true;
+            return 'passed';
+        }
+        return 'none';
+    }
+
+    render(ctx, sx, sy, w, h, now, dim) {
+        let ratio = this.getClosedRatio(now);
+        let lightness = 40 * dim;
+        let alpha = dim * 0.8;
+        
+        ctx.fillStyle = `hsla(${this.hue}, 80%, ${lightness}%, ${alpha})`;
+        ctx.strokeStyle = `rgba(255, 255, 255, ${dim})`;
+        ctx.lineWidth = 2;
+
+        if (this.orientation === 'vertical') {
+            let doorH = h * ratio;
+            // Top half
+            ctx.fillRect(sx - w, sy - h, w * 2, doorH);
+            ctx.strokeRect(sx - w, sy - h, w * 2, doorH);
+            // Bottom half
+            ctx.fillRect(sx - w, sy + h - doorH, w * 2, doorH);
+            ctx.strokeRect(sx - w, sy + h - doorH, w * 2, doorH);
+        } else {
+            let doorW = w * ratio;
+            // Left half
+            ctx.fillRect(sx - w, sy - h, doorW, h * 2);
+            ctx.strokeRect(sx - w, sy - h, doorW, h * 2);
+            // Right half
+            ctx.fillRect(sx + w - doorW, sy - h, doorW, h * 2);
+            ctx.strokeRect(sx + w - doorW, sy - h, doorW, h * 2);
+        }
+        
+        // Add a "sensor" glow when activated but still closing
+        if (this.activated && ratio > 0) {
+            ctx.shadowBlur = 15 * dim;
+            ctx.shadowColor = "white";
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+        }
+    }
+}
