@@ -241,7 +241,7 @@ export class Renderer {
             
             // Wing cannons: spread wide near fire point, converge over distance
             const wingSpread = 600;
-            const convergeDistance = 4000;
+            const convergeDistance = 8000; // Brought slightly closer again
             
             const sides = [-1, 1];
             
@@ -295,8 +295,7 @@ export class Renderer {
                 this.ctx.fillStyle = '#ff1a1a'; // bright scarlet core
                 
                 // Fade out based on distance, not time! 
-                // Doubled fade distance so it doesn't fade too aggressively
-                const visibleDistance = 8000;
+                const visibleDistance = 15000;
                 const distFade = Math.max(0, 1 - (tailRelZ / visibleDistance)); 
                 this.ctx.globalAlpha = distFade * distFade; // Quadratic fade
                 
