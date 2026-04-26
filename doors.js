@@ -14,10 +14,10 @@ export class BaseDoor {
         this.activated = false;
         this.activationTime = 0;
         
-        // Cycle timing (in seconds)
-        this.closeTime = 0.8;   // time to go from open to fully closed
-        this.pauseTime = 0.15;  // time to stay fully closed
-        this.openTime = 1.2;    // time to open back up
+        // Cycle timing (in seconds) — can be overridden per door
+        this.closeTime = 1.8;   // time to go from open to fully closed
+        this.pauseTime = 0.1;   // time to stay fully closed
+        this.openTime = 1.0;    // time to open back up
     }
 
     /**

@@ -44,6 +44,17 @@ export function createTrack(level) {
                     doorObj = new SingleDoor(origin, doorSpeed, doorPhaseOffset);
                 }
                 doorObj.doorZ = i * SEGMENT_LENGTH;
+                
+                // Randomize timing: 70% slow doors, 30% fast doors
+                if (Math.random() < 0.7) {
+                    // Slow door — comfortable even at high speed
+                    doorObj.closeTime = 2.0 + Math.random() * 1.0;
+                    doorObj.openTime = 0.8 + Math.random() * 0.4;
+                } else {
+                    // Fast door — requires attention
+                    doorObj.closeTime = 1.0 + Math.random() * 0.5;
+                    doorObj.openTime = 1.0 + Math.random() * 0.5;
+                }
             } else if (i % 75 === 0) {
                 type = 'narrow';
                 widthFactor = 0.5;
