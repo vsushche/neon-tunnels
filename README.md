@@ -28,7 +28,6 @@ A modular, high-performance browser-based tunnel racing game built with Vanilla 
 ### Running the Project
 Since the project uses ES Modules, it must be served via a web server (it won't work by opening `index.html` directly from the file system). Use Git Bash to run the following commands:
 
-#### Option 1: npm
 Start the development server with live reload:
 ```bash
 npm start
@@ -36,12 +35,8 @@ npm start
 
 Then open the local URL printed in the terminal.
 
-#### Option 2: Python
-Run the following command in the project root:
-```bash
-python -m http.server 8080
-```
-Then visit `http://localhost:8080` in your browser.
+### Codex Note
+Codex must not start the development server automatically. The project owner starts `npm start` manually and watches the server console to verify which files are being read. If the server is not running, ask the owner to start it instead of launching Python, live-server, or any other server process.
 
 
 ## Development
