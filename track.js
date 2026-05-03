@@ -49,29 +49,25 @@ export function createTrack(level) {
                 type = 'door';
                 doorPhaseOffset = Math.random() * Math.PI * 2;
 
-                // TODO: Restore the randomized door mix after confirming the laser-hit bug fix.
-                // let rnd = Math.random();
-                // if (rnd < 0.25) {
-                //     let orientation = Math.random() > 0.5 ? 'vertical' : 'horizontal';
-                //     doorObj = new DoubleDoor(orientation, doorSpeed, doorPhaseOffset);
-                //     doorObj.hue = Math.random() * 260; // Avoid Purple range
-                // } else if (rnd < 0.50) {
-                //     const origins = ['top', 'bottom', 'left', 'right'];
-                //     let origin = origins[Math.floor(Math.random() * origins.length)];
-                //     doorObj = new SingleDoor(origin, doorSpeed, doorPhaseOffset);
-                //     doorObj.hue = Math.random() * 260;
-                // } else if (rnd < 0.75) {
-                //     let direction = Math.random() > 0.5 ? 'horizontal' : 'vertical';
-                //     doorObj = new GateDoor(direction, doorSpeed, doorPhaseOffset);
-                //     doorObj.hue = Math.random() * 260;
-                // } else {
-                //     let orientation = Math.random() > 0.5 ? 'vertical' : 'horizontal';
-                //     doorObj = new SensorDoor(orientation, doorSpeed, doorPhaseOffset);
-                //     doorObj.hue = 280; // Fixed Purple for SensorDoors
-                // }
-                let orientation = Math.random() > 0.5 ? 'vertical' : 'horizontal';
-                doorObj = new SensorDoor(orientation, doorSpeed, doorPhaseOffset);
-                doorObj.hue = 280; // Fixed Purple for SensorDoors
+                let rnd = Math.random();
+                if (rnd < 0.25) {
+                    let orientation = Math.random() > 0.5 ? 'vertical' : 'horizontal';
+                    doorObj = new DoubleDoor(orientation, doorSpeed, doorPhaseOffset);
+                    doorObj.hue = Math.random() * 260; // Avoid Purple range
+                } else if (rnd < 0.50) {
+                    const origins = ['top', 'bottom', 'left', 'right'];
+                    let origin = origins[Math.floor(Math.random() * origins.length)];
+                    doorObj = new SingleDoor(origin, doorSpeed, doorPhaseOffset);
+                    doorObj.hue = Math.random() * 260;
+                } else if (rnd < 0.75) {
+                    let direction = Math.random() > 0.5 ? 'horizontal' : 'vertical';
+                    doorObj = new GateDoor(direction, doorSpeed, doorPhaseOffset);
+                    doorObj.hue = Math.random() * 260;
+                } else {
+                    let orientation = Math.random() > 0.5 ? 'vertical' : 'horizontal';
+                    doorObj = new SensorDoor(orientation, doorSpeed, doorPhaseOffset);
+                    doorObj.hue = 280; // Fixed Purple for SensorDoors
+                }
                 doorObj.doorZ = i * SEGMENT_LENGTH;
                 
                 // Randomize timing: 70% slow doors, 30% fast doors
