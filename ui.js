@@ -12,6 +12,7 @@ const uiElements = {
     menuScreen: document.getElementById('menu-screen'),
     startBtn: document.getElementById('start-btn'),
     menuTitle: document.getElementById('menu-title'),
+    menuDesc: document.getElementById('menu-desc'),
     secretCompleteBtn: document.getElementById('secret-complete-btn')
 };
 
@@ -34,6 +35,7 @@ export function showFlash() {
 export function showMenu(title, btnText) {
     uiElements.menuTitle.innerText = title;
     uiElements.startBtn.innerText = btnText;
+    uiElements.menuDesc.classList.add('hidden');
     uiElements.menuScreen.classList.remove('hidden');
 }
 

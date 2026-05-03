@@ -34,15 +34,22 @@
             <div class="hud-panel">
                 <div class="hud-label">TIME</div>
                 <div class="hud-value" id="ui-time">0.00s</div>
-                <div class="hud-label" style="margin-top: 5px;">PROGRESS</div>
-                <div class="hud-bar-bg"><div class="hud-bar-fill" id="ui-progress-bar" style="background: #00ffcc; width: 0%;"></div></div>
+                <div class="hud-label hud-label-progress">PROGRESS</div>
+                <div class="hud-bar-bg"><div class="hud-bar-fill" id="ui-progress-bar"></div></div>
             </div>
         </div>
         
         <!-- Start / Game Over Screen -->
         <div id="menu-screen" class="glass-panel">
             <h1 id="menu-title">NEON TUNNELS</h1>
-            <p id="menu-desc">Arrow Keys to Move.<br>Space to Accelerate, Left Alt to Brake, X to Fire.<br>Dodge the walls and shoot sensor gates open.</p>
+            <p id="menu-desc">
+                <span class="key-group" aria-label="Arrow keys">
+                    <kbd>&uarr;</kbd><kbd>&larr;</kbd><kbd>&darr;</kbd><kbd>&rarr;</kbd>
+                </span>
+                to Move.<br>
+                <kbd>Space</kbd> to Accelerate, <kbd>Left Alt</kbd> to Brake, <kbd>X</kbd> to Fire.<br>
+                Dodge the walls and shoot sensor gates open.
+            </p>
             <button id="start-btn">START</button>
         </div>
     </div>
