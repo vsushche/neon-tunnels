@@ -1,5 +1,5 @@
 import { GAME_CONFIG } from './gameConfig.js';
-import { updateHUD, showFlash, showMenu, hideMenu } from './ui.js';
+import { GameEventType, gameEvent } from './events.js';
 import { createTrack } from './track.js';
 
 const { levels: LEVEL_CONFIG, tunnel: TUNNEL_CONFIG, ship: SHIP_CONFIG, laser: LASER_CONFIG, track: TRACK_CONFIG, autopilot: AUTOPILOT_CONFIG, countdown: COUNTDOWN_CONFIG } = GAME_CONFIG;
@@ -43,8 +43,7 @@ export class GameState {
 }
 
 export class GameEngine {
-    constructor(audio, input) {
-        this.audio = audio;
+    constructor(input) {
         this.input = input;
         this.state = new GameState();
     }
@@ -68,42 +67,40 @@ export class GameEngine {
         this.state.gameState = EngineStatus.COUNTDOWN;
         this.state.countdownTime = COUNTDOWN_CONFIG.duration;
         this.state.lastBeepStep = -1;
-        hideMenu();
-        this.audio.stopMenuMusic();
-        this.audio.startEngineSound();
-        updateHUD(this.state);
+
+        return [
+            gameEvent(GameEventType.LEVEL_STARTED, { level })
+        ];
     }
 
-    handleCrash() {
+    handleCrash(events) {
         if (this.state.gameState !== EngineStatus.PLAYING) return;
-        this.audio.playCrashSound();
-        showFlash();
         
         this.state.speed *= SHIP_CONFIG.crashSpeedPenalty;
         this.state.cameraZ -= SHIP_CONFIG.crashRewind;
         if (this.state.cameraZ < 0) this.state.cameraZ = 0;
+
+        events.push(gameEvent(GameEventType.SHIP_CRASHED));
     }
 
-    handleWin() {
-        this.audio.stopEngineSound();
-        this.audio.startMenuMusic();
-
+    handleWin(events) {
         if (this.state.currentLevel >= LEVEL_CONFIG.count) {
             this.state.gameState = EngineStatus.COMPLETE;
-            showMenu("ARMAGEDDON AVERTED. ALL TUNNELS CLEAR.", "RESTART");
+            events.push(gameEvent(GameEventType.GAME_COMPLETED));
         } else {
             this.state.gameState = EngineStatus.WIN;
-            showMenu(`MISSION COMPLETE! LEVEL ${this.state.currentLevel} CLEAR.`, "NEXT LEVEL");
+            events.push(gameEvent(GameEventType.LEVEL_COMPLETED, { level: this.state.currentLevel }));
         }
     }
 
     update(dt, now) {
-        const { state, input, audio } = this;
+        const { state, input } = this;
+        const events = [];
 
         if (state.gameState === EngineStatus.COUNTDOWN) {
             const currentStep = Math.floor(state.countdownTime / COUNTDOWN_CONFIG.stepDuration);
             if (currentStep !== state.lastBeepStep && currentStep >= 0) {
-                audio.playCountdownBeep(currentStep === 0);
+                events.push(gameEvent(GameEventType.COUNTDOWN_BEEP, { isHigh: currentStep === 0 }));
                 state.lastBeepStep = currentStep;
             }
             
@@ -111,9 +108,8 @@ export class GameEngine {
             if (state.countdownTime <= 0) {
                 state.gameState = EngineStatus.PLAYING;
                 state.startTime = now; // reset start time to actual play start
+                events.push(gameEvent(GameEventType.COUNTDOWN_FINISHED));
             }
-            updateHUD(state);
-            audio.updateEngineSound(0, state.MAX_SPEED);
         } else if (state.gameState === EngineStatus.PLAYING) {
             state.elapsedTime = (now - state.startTime) / 1000;
             
@@ -142,7 +138,7 @@ export class GameEngine {
                     startTime: now
                 });
                 state.lastFireTime = now;
-                audio.playLaserSound();
+                events.push(gameEvent(GameEventType.LASER_FIRED));
             }
 
             // Update projectiles and check for hits
@@ -174,6 +170,7 @@ export class GameEngine {
                         } else {
                             seg.door.lastHitTime = now;
                         }
+                        events.push(gameEvent(GameEventType.LASER_HIT_DOOR, { segmentIndex: segIdx }));
                         return false; // Laser absorbed by door
                     }
                 }
@@ -200,15 +197,13 @@ export class GameEngine {
             // Enter exit zone — switch to cinematic autopilot
             if (currentSegIndex >= state.trackLength - TRACK_CONFIG.exitZoneSegments) {
                 state.gameState = EngineStatus.EXITING;
-                audio.playVictoryMelody();
-                return;
+                events.push(gameEvent(GameEventType.EXIT_STARTED, { level: state.currentLevel }));
+                return events;
             }
             
             let currentSeg = state.track[currentSegIndex];
             if (!currentSeg) {
-                updateHUD(state);
-                audio.updateEngineSound(state.speed, state.MAX_SPEED);
-                return;
+                return events;
             }
 
             let currentW = (TUNNEL_WIDTH * currentSeg.widthFactor) / 2;
@@ -224,7 +219,7 @@ export class GameEngine {
             
             if (hitWall) {
                 state.speed *= SHIP_CONFIG.wallSpeedPenalty;
-                audio.playScrapeSound();
+                events.push(gameEvent(GameEventType.WALL_SCRAPED));
             }
             
             if (currentSegIndex > 0) {
@@ -233,22 +228,19 @@ export class GameEngine {
                     if (currentSeg.door) {
                         let result = currentSeg.door.checkCollision(state.shipX, state.shipY, SHIP_WIDTH, SHIP_HEIGHT, currentW, currentH, now);
                         if (result === 'crash') {
-                            this.handleCrash();
+                            this.handleCrash(events);
                         } else if (result === 'passed') {
-                            audio.playDoorPassSound();
+                            events.push(gameEvent(GameEventType.DOOR_PASSED, { segmentIndex: currentSegIndex }));
                         }
                     } else if (currentSeg.type === 'mine') {
                         let dx = state.shipX - currentSeg.mineX;
                         let dy = state.shipY - currentSeg.mineY;
                         if (Math.sqrt(dx*dx + dy*dy) < SHIP_WIDTH/2 + 50) {
-                            this.handleCrash();
+                            this.handleCrash(events);
                         }
                     }
                 }
             }
-            
-            updateHUD(state);
-            audio.updateEngineSound(state.speed, state.MAX_SPEED);
         } else if (state.gameState === EngineStatus.EXITING) {
             // Autopilot: accelerate to max and center the ship
             state.speed += (state.MAX_SPEED - state.speed) * 2 * dt;
@@ -262,18 +254,16 @@ export class GameEngine {
             
             let currentSegIndex = Math.floor(state.cameraZ / SEGMENT_LENGTH);
             if (currentSegIndex >= state.trackLength + AUTOPILOT_CONFIG.finishPaddingSegments) {
-                this.handleWin();
+                this.handleWin(events);
             }
-            
-            audio.updateEngineSound(state.speed, state.MAX_SPEED);
         } else if (state.gameState === EngineStatus.WIN) {
             state.speed *= AUTOPILOT_CONFIG.winDriftSpeedDamping;
             state.cameraZ += state.speed * dt;
-            audio.updateEngineSound(state.speed, state.MAX_SPEED);
         } else if (state.gameState === EngineStatus.COMPLETE) {
             state.speed *= AUTOPILOT_CONFIG.winDriftSpeedDamping;
             state.cameraZ += state.speed * dt;
-            audio.updateEngineSound(state.speed, state.MAX_SPEED);
         }
+
+        return events;
     }
 }

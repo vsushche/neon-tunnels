@@ -1,3 +1,5 @@
+import { GameEventType } from './events.js';
+
 const AudioContext = window.AudioContext || window.webkitAudioContext;
 
 export class AudioManager {
@@ -9,6 +11,56 @@ export class AudioManager {
         this.menuAudio = null;
         this.audioCtx = new AudioContext();
         this.audioCtx.resume();
+    }
+
+    handleEvents(events, state) {
+        for (const event of events) {
+            switch (event.type) {
+                case GameEventType.MENU_ACTIVATED:
+                    this.startMenuMusic();
+                    break;
+
+                case GameEventType.LEVEL_STARTED:
+                    this.stopMenuMusic();
+                    this.startEngineSound();
+                    break;
+
+                case GameEventType.COUNTDOWN_BEEP:
+                    this.playCountdownBeep(event.payload.isHigh);
+                    break;
+
+                case GameEventType.LASER_FIRED:
+                    this.playLaserSound();
+                    break;
+
+                case GameEventType.SHIP_CRASHED:
+                    this.playCrashSound();
+                    break;
+
+                case GameEventType.WALL_SCRAPED:
+                    this.playScrapeSound();
+                    break;
+
+                case GameEventType.DOOR_PASSED:
+                    this.playDoorPassSound();
+                    break;
+
+                case GameEventType.EXIT_STARTED:
+                    this.playVictoryMelody();
+                    break;
+
+                case GameEventType.LEVEL_COMPLETED:
+                case GameEventType.GAME_COMPLETED:
+                    this.stopEngineSound();
+                    this.startMenuMusic();
+                    break;
+
+                default:
+                    break;
+            }
+        }
+
+        this.updateEngineSound(state.speed, state.MAX_SPEED);
     }
 
     playCrashSound() {

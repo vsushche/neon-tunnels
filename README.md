@@ -12,6 +12,7 @@ A modular, high-performance browser-based tunnel racing game built with Vanilla 
 - `style.css`: Modern glassmorphism UI styles and neon effects.
 - `main.js`: Game loop and module initialization.
 - `engine.js`: Core game logic, state management, and level progression.
+- `events.js`: Domain game events shared by engine, UI, and audio.
 - `renderer.js`: Canvas-based 3D rendering engine.
 - `input.js`: Keyboard input handling.
 - `audio.js`: Sound effect and music management.

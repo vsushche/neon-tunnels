@@ -1,4 +1,5 @@
 import { GAME_CONFIG } from './gameConfig.js';
+import { GameEventType } from './events.js';
 
 const SEGMENT_LENGTH = GAME_CONFIG.tunnel.segmentLength;
 
@@ -19,9 +20,38 @@ export function updateHUD(state) {
     uiElements.uiLevel.innerText = state.currentLevel;
     uiElements.uiTime.innerText = state.elapsedTime.toFixed(2) + 's';
     uiElements.uiSpeed.innerText = Math.floor(state.speed);
-    uiElements.uiSpeedBar.style.width = `${Math.max(0, (state.speed / state.MAX_SPEED) * 100)}%`;
-    let progress = Math.min(100, Math.max(0, (state.cameraZ / (state.trackLength * SEGMENT_LENGTH)) * 100));
+    const speedPercent = state.MAX_SPEED > 0 ? (state.speed / state.MAX_SPEED) * 100 : 0;
+    uiElements.uiSpeedBar.style.width = `${Math.max(0, speedPercent)}%`;
+    const trackDistance = state.trackLength * SEGMENT_LENGTH;
+    let progress = trackDistance > 0 ? Math.min(100, Math.max(0, (state.cameraZ / trackDistance) * 100)) : 0;
     uiElements.uiProgress.style.width = `${progress}%`;
+}
+
+export function handleEvents(events, state) {
+    updateHUD(state);
+
+    for (const event of events) {
+        switch (event.type) {
+            case GameEventType.LEVEL_STARTED:
+                hideMenu();
+                break;
+
+            case GameEventType.SHIP_CRASHED:
+                showFlash();
+                break;
+
+            case GameEventType.LEVEL_COMPLETED:
+                showMenu(`MISSION COMPLETE! LEVEL ${event.payload.level} CLEAR.`, "NEXT LEVEL");
+                break;
+
+            case GameEventType.GAME_COMPLETED:
+                showMenu("ARMAGEDDON AVERTED. ALL TUNNELS CLEAR.", "RESTART");
+                break;
+
+            default:
+                break;
+        }
+    }
 }
 
 export function showFlash() {
