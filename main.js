@@ -8,9 +8,14 @@ const input = new InputHandler();
 const renderer = new Renderer();
 const audio = new AudioManager();
 const engine = new GameEngine(audio, input);
+window.onclick = () => {
+    audio.startMenuMusic();
+    window.onclick = null;
+}
+
 
 onStartBtnClick(() => {
-    audio.init();
+    audio.stopMenuMusic();
     if (engine.state.gameState === EngineStatus.WIN) {
         engine.start(engine.state.currentLevel + 1);
     } else {

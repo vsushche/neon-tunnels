@@ -35,10 +35,6 @@ python -m http.server 8080
 ```
 Then visit `http://localhost:8080` in your browser.
 
-#### Option 2: Node.js / npx
-```bash
-npx serve .
-```
 
 ## Development
 To modify game mechanics (speed, acceleration, etc.), edit `constants.js`. To add new game states, update the `EngineStatus` enum and handlers in `engine.js`.

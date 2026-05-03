@@ -3,6 +3,10 @@ import { updateHUD, showFlash, showMenu, hideMenu } from './ui.js';
 import { createTrack } from './track.js';
 
 const EXIT_ZONE_SEGMENTS = 15;
+const LASER_LIFETIME = 500;
+const LASER_START_OFFSET = 200;
+const LASER_RANGE = 15000;
+const LASER_SIZE = 10;
 
 export const EngineStatus = Object.freeze({
     MENU:      'menu',
@@ -54,11 +58,14 @@ export class GameEngine {
         this.state.shipY = 0;
         this.state.shipVX = 0;
         this.state.shipVY = 0;
+        this.state.projectiles = [];
+        this.state.lastFireTime = 0;
         
         this.state.gameState = EngineStatus.COUNTDOWN;
         this.state.countdownTime = 3; // 3 seconds
         this.state.lastBeepStep = -1;
         hideMenu();
+        this.audio.stopMenuMusic();
         this.audio.startEngineSound();
         updateHUD(this.state);
     }
@@ -76,6 +83,7 @@ export class GameEngine {
     handleWin() {
         this.state.gameState = EngineStatus.WIN;
         this.audio.stopEngineSound();
+        this.audio.startMenuMusic();
         showMenu(`MISSION COMPLETE! LEVEL ${this.state.currentLevel} CLEAR.`, "#00ffcc", "NEXT LEVEL");
     }
 
@@ -130,34 +138,38 @@ export class GameEngine {
             // Update projectiles and check for hits
             state.projectiles = state.projectiles.filter(p => {
                 const age = now - p.startTime;
-                if (age > 500) return false; // 0.5s lifetime
+                if (age > LASER_LIFETIME) return false; // 0.5s lifetime
                 
-                const progress = age / 500;
-                const headZ = p.z + 200 + progress * 15000;
-                
-                // Find segment at laser head
-                const segIdx = Math.floor(headZ / SEGMENT_LENGTH);
-                const seg = state.track[segIdx];
-                
-                if (seg && seg.door) {
+                const previousAge = Math.max(0, age - dt * 1000);
+                const previousProgress = previousAge / LASER_LIFETIME;
+                const progress = age / LASER_LIFETIME;
+                const previousHeadZ = p.z + LASER_START_OFFSET + previousProgress * LASER_RANGE;
+                const headZ = p.z + LASER_START_OFFSET + progress * LASER_RANGE;
+
+                const startSegIdx = Math.max(0, Math.floor(Math.min(previousHeadZ, headZ) / SEGMENT_LENGTH));
+                const endSegIdx = Math.min(state.trackLength - 1, Math.floor(Math.max(previousHeadZ, headZ) / SEGMENT_LENGTH));
+
+                // Sweep across every segment crossed this frame so fast laser bolts cannot skip thin doors.
+                for (let segIdx = startSegIdx; segIdx <= endSegIdx; segIdx++) {
+                    const seg = state.track[segIdx];
+                    if (!seg || !seg.door) continue;
+
                     const currentW = (TUNNEL_WIDTH * seg.widthFactor) / 2;
                     const currentH = (TUNNEL_HEIGHT * seg.heightFactor) / 2;
-                    
-                    // Use door's own collision logic to see if laser hits the panels
-                    const result = seg.door.checkCollision(p.x, p.y, 10, 10, currentW, currentH, now);
-                    if (result === 'crash') {
+
+                    if (seg.door.checkLaserHit(p.x, p.y, LASER_SIZE, LASER_SIZE, currentW, currentH, now)) {
                         // Only activate/trigger the door if it's relatively close (e.g. < 4000 units)
                         const distToDoor = seg.door.doorZ - state.cameraZ;
                         if (distToDoor < 4000) {
                             seg.door.onHit(now);
                         } else {
-                            seg.door.lastHitTime = now; 
+                            seg.door.lastHitTime = now;
                         }
                         return false; // Laser absorbed by door
                     }
                 }
                 
-                return headZ < state.cameraZ + 15000; // Clip at distance
+                return headZ < state.cameraZ + LASER_RANGE; // Clip at distance
             });
             
             state.shipVX *= SHIP_FRICTION;

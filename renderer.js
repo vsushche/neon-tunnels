@@ -122,7 +122,7 @@ export class Renderer {
             let laserGlow = 0;
             state.projectiles.forEach(p => {
                 const age = now - p.startTime;
-                const progress = age / 5000; // Match slowmo
+                const progress = age / 500;
                 const headZ = p.z + 200 + progress * 15000;
                 const dist = Math.abs(headZ - p1.seg.index * SEGMENT_LENGTH);
                 if (dist < 2000) {
@@ -130,12 +130,7 @@ export class Renderer {
                     let glow = (1 - dist/2000) * 0.4;
                     // Fade glow with distance (dim is 1 near camera, 0 far away)
                     glow *= dim;
-                    
-                    // Delay illumination: only start glowing when head is > 1000 units away
-                    const headRelZ = headZ - state.cameraZ;
-                    const startupFactor = Math.min(1, Math.max(0, (headRelZ - 1000) / 1000));
-                    glow *= startupFactor;
-                    
+
                     laserGlow += glow;
                 }
             });

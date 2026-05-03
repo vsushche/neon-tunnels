@@ -19,9 +19,9 @@ export class BaseDoor {
         this.hitFlashDuration = 1000; // 1 second red glow
         
         // Cycle timing (in seconds) — can be overridden per door
-        this.closeTime = 1.8;   // time to go from open to fully closed
+        this.closeTime = 1.4;   // time to go from open to fully closed
         this.pauseTime = 0.1;   // time to stay fully closed
-        this.openTime = 1.0;    // time to open back up
+        this.openTime = 1.4;    // time to open back up
     }
 
     /**
@@ -76,6 +76,10 @@ export class BaseDoor {
         return 'none';
     }
 
+    checkLaserHit(laserX, laserY, laserW, laserH, currentW, currentH, now) {
+        return false;
+    }
+
     render(ctx, sx, sy, w, h, now, dim) {
     }
 }
@@ -107,6 +111,19 @@ export class DoubleDoor extends BaseDoor {
             }
         }
         return 'none';
+    }
+
+    checkLaserHit(laserX, laserY, laserW, laserH, currentW, currentH, now) {
+        let ratio = this.getClosedRatio(now);
+
+        if (this.orientation === 'vertical') {
+            let safeDistanceY = currentH * (1 - ratio);
+            return Math.abs(laserY) + laserH / 2 > safeDistanceY;
+        } else if (this.orientation === 'horizontal') {
+            let safeDistanceX = currentW * (1 - ratio);
+            return Math.abs(laserX) + laserW / 2 > safeDistanceX;
+        }
+        return false;
     }
 
     render(ctx, sx, sy, w, h, now, dim) {
@@ -176,6 +193,25 @@ export class SingleDoor extends BaseDoor {
             return 'passed';
         }
         return 'none';
+    }
+
+    checkLaserHit(laserX, laserY, laserW, laserH, currentW, currentH, now) {
+        let ratio = this.getClosedRatio(now);
+
+        if (this.origin === 'top') {
+            let doorEdgeY = -currentH + (2 * currentH * ratio);
+            return laserY - laserH / 2 < doorEdgeY;
+        } else if (this.origin === 'bottom') {
+            let doorEdgeY = currentH - (2 * currentH * ratio);
+            return laserY + laserH / 2 > doorEdgeY;
+        } else if (this.origin === 'left') {
+            let doorEdgeX = -currentW + (2 * currentW * ratio);
+            return laserX - laserW / 2 < doorEdgeX;
+        } else if (this.origin === 'right') {
+            let doorEdgeX = currentW - (2 * currentW * ratio);
+            return laserX + laserW / 2 > doorEdgeX;
+        }
+        return false;
     }
 
     render(ctx, sx, sy, w, h, now, dim) {
@@ -269,6 +305,24 @@ export class GateDoor extends BaseDoor {
             return 'passed';
         }
         return 'none';
+    }
+
+    checkLaserHit(laserX, laserY, laserW, laserH, currentW, currentH, now) {
+        let gapPos = this.getGapPosition(now);
+
+        if (this.direction === 'horizontal') {
+            let gapHalfW = this.getGapHalfSize(currentW, laserW);
+            let gapCenterX = gapPos * (currentW - gapHalfW);
+
+            return laserX + laserW / 2 > gapCenterX + gapHalfW ||
+                laserX - laserW / 2 < gapCenterX - gapHalfW;
+        } else {
+            let gapHalfH = this.getGapHalfSize(currentH, laserH);
+            let gapCenterY = gapPos * (currentH - gapHalfH);
+
+            return laserY + laserH / 2 > gapCenterY + gapHalfH ||
+                laserY - laserH / 2 < gapCenterY - gapHalfH;
+        }
     }
 
     render(ctx, sx, sy, w, h, now, dim) {
@@ -377,6 +431,18 @@ export class SensorDoor extends BaseDoor {
             return 'passed';
         }
         return 'none';
+    }
+
+    checkLaserHit(laserX, laserY, laserW, laserH, currentW, currentH, now) {
+        let ratio = this.getClosedRatio(now);
+
+        if (this.orientation === 'vertical') {
+            let safeDistanceY = currentH * (1 - ratio);
+            return Math.abs(laserY) + laserH / 2 > safeDistanceY;
+        } else {
+            let safeDistanceX = currentW * (1 - ratio);
+            return Math.abs(laserX) + laserW / 2 > safeDistanceX;
+        }
     }
 
     render(ctx, sx, sy, w, h, now, dim) {

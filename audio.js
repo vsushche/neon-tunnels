@@ -6,12 +6,9 @@ export class AudioManager {
         this.engineOsc = null;
         this.engineGain = null;
         this.isEngineRunning = false;
-    }
-
-    init() {
-        if (!this.audioCtx) {
-            this.audioCtx = new AudioContext();
-        }
+        this.menuAudio = null;
+        this.audioCtx = new AudioContext();
+        this.audioCtx.resume();
     }
 
     playCrashSound() {
@@ -186,5 +183,55 @@ export class AudioManager {
 
         osc.start(now);
         osc.stop(now + 0.15);
+    }
+
+    startMenuMusic() {
+        if (!this.audioCtx) return;
+        if (this.menuInterval) return;
+
+        const notes = [
+            130.81, 261.63, 196.00, 261.63,
+            146.83, 293.66, 220.00, 293.66
+        ]; // C3, C4, G3, C4, D3, D4, A3, D4
+        
+        let step = 0;
+        const tempo = 140; // BPM
+        const stepTime = 60 / tempo / 2; // 1/8 notes
+        
+        this.menuInterval = setInterval(() => {
+            const now = this.audioCtx.currentTime;
+            const freq = notes[step % notes.length];
+            
+            const osc = this.audioCtx.createOscillator();
+            const gain = this.audioCtx.createGain();
+            const filter = this.audioCtx.createBiquadFilter();
+            
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(freq, now);
+            
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(2000, now);
+            filter.frequency.exponentialRampToValueAtTime(200, now + stepTime);
+            
+            gain.gain.setValueAtTime(0, now);
+            gain.gain.linearRampToValueAtTime(0.08, now + 0.01);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + stepTime * 0.9);
+            
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(this.audioCtx.destination);
+            
+            osc.start(now);
+            osc.stop(now + stepTime);
+            
+            step++;
+        }, stepTime * 1000);
+    }
+
+    stopMenuMusic() {
+        if (this.menuInterval) {
+            clearInterval(this.menuInterval);
+            this.menuInterval = null;
+        }
     }
 }
