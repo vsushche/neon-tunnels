@@ -1,4 +1,6 @@
-import { FOCAL_LENGTH } from './constants.js';
+import { GAME_CONFIG } from './gameConfig.js';
+
+const FOCAL_LENGTH = GAME_CONFIG.tunnel.focalLength;
 
 export class Starfield {
     constructor(count, spread, depth) {

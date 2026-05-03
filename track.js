@@ -1,10 +1,15 @@
-import { SEGMENT_LENGTH, TUNNEL_WIDTH, TUNNEL_HEIGHT } from './constants.js';
+import { GAME_CONFIG } from './gameConfig.js';
 import { DoubleDoor, SingleDoor, GateDoor, SensorDoor } from './doors.js';
+
+const { tunnel: TUNNEL_CONFIG, track: TRACK_CONFIG } = GAME_CONFIG;
+const SEGMENT_LENGTH = TUNNEL_CONFIG.segmentLength;
+const TUNNEL_WIDTH = TUNNEL_CONFIG.width;
+const TUNNEL_HEIGHT = TUNNEL_CONFIG.height;
 
 export function createTrack(level) {
     let track = [];
-    let trackLength = 200 + level * 100;
-    let maxSpeed = 2000 + level * 500;
+    let trackLength = TRACK_CONFIG.baseLength + level * TRACK_CONFIG.levelLengthStep;
+    let maxSpeed = TRACK_CONFIG.baseMaxSpeed + level * TRACK_CONFIG.levelMaxSpeedStep;
     
     let currentCurveX = 0;
     let currentCurveY = 0;
@@ -18,10 +23,11 @@ export function createTrack(level) {
     const hue2 = (hue1 + 180) % 360;
     
     for (let i = 0; i < trackLength; i++) {
-        // Change tunnel dimensions every 60 segments
-        if (i % 60 === 0 && i > 20 && i < trackLength - 40) {
-            targetWidthFactor = 0.5 + Math.random() * 1.0;  // 0.5 to 1.5
-            targetHeightFactor = 0.5 + Math.random() * 1.0; // 0.5 to 1.5
+        if (i % TRACK_CONFIG.dimensionChangeInterval === 0 &&
+            i > TRACK_CONFIG.dimensionChangeStart &&
+            i < trackLength - TRACK_CONFIG.dimensionChangeEndPadding) {
+            targetWidthFactor = TRACK_CONFIG.minDimensionFactor + Math.random() * TRACK_CONFIG.dimensionFactorRange;
+            targetHeightFactor = TRACK_CONFIG.minDimensionFactor + Math.random() * TRACK_CONFIG.dimensionFactorRange;
             
             // Randomly change curves too
             currentCurveX = (Math.random() - 0.5) * 0.1 * (1 + level * 0.2);
@@ -29,10 +35,10 @@ export function createTrack(level) {
         }
         
         // Smooth interpolation
-        currentWidthFactor += (targetWidthFactor - currentWidthFactor) * 0.08;
-        currentHeightFactor += (targetHeightFactor - currentHeightFactor) * 0.08;
+        currentWidthFactor += (targetWidthFactor - currentWidthFactor) * TRACK_CONFIG.dimensionLerp;
+        currentHeightFactor += (targetHeightFactor - currentHeightFactor) * TRACK_CONFIG.dimensionLerp;
         
-        if (i > trackLength - 20) {
+        if (i > trackLength - TRACK_CONFIG.finalStraightSegments) {
             currentCurveX = 0;
             currentCurveY = 0;
             targetWidthFactor = 1.0;
@@ -44,8 +50,8 @@ export function createTrack(level) {
         let doorSpeed = 1 + level * 0.2;
         let doorObj = null;
         
-        if (i > 30 && i < trackLength - 30) {
-            if (i % 40 === 0) {
+        if (i > TRACK_CONFIG.safeStartSegments && i < trackLength - TRACK_CONFIG.safeEndSegments) {
+            if (i % TRACK_CONFIG.doorInterval === 0) {
                 type = 'door';
                 doorPhaseOffset = Math.random() * Math.PI * 2;
 
@@ -80,7 +86,7 @@ export function createTrack(level) {
                 }
                 doorObj.closeTime = transitionTime;
                 doorObj.openTime = transitionTime;
-            } else if (i % 27 === 0) {
+            } else if (i % TRACK_CONFIG.mineInterval === 0) {
                 type = 'mine';
             }
         }
@@ -98,8 +104,8 @@ export function createTrack(level) {
             heightFactor: currentHeightFactor,
             doorPhaseOffset: doorPhaseOffset,
             doorSpeed: doorSpeed,
-            mineX: type === 'mine' ? (Math.random() - 0.5) * (TUNNEL_WIDTH * currentWidthFactor - 200) : 0,
-            mineY: type === 'mine' ? (Math.random() - 0.5) * (TUNNEL_HEIGHT * currentHeightFactor - 200) : 0,
+            mineX: type === 'mine' ? (Math.random() - 0.5) * (TUNNEL_WIDTH * currentWidthFactor - TRACK_CONFIG.minePadding) : 0,
+            mineY: type === 'mine' ? (Math.random() - 0.5) * (TUNNEL_HEIGHT * currentHeightFactor - TRACK_CONFIG.minePadding) : 0,
             door: doorObj,
             hue: colorIndex === 0 ? hue1 : hue2,
             passed: false

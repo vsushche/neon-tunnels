@@ -1,12 +1,15 @@
-import { SEGMENT_LENGTH, TUNNEL_WIDTH, TUNNEL_HEIGHT, SHIP_ACCEL, SHIP_FRICTION, SHIP_WIDTH, SHIP_HEIGHT } from './constants.js';
+import { GAME_CONFIG } from './gameConfig.js';
 import { updateHUD, showFlash, showMenu, hideMenu } from './ui.js';
 import { createTrack } from './track.js';
 
-const EXIT_ZONE_SEGMENTS = 15;
-const LASER_LIFETIME = 500;
-const LASER_START_OFFSET = 200;
-const LASER_RANGE = 15000;
-const LASER_SIZE = 10;
+const { tunnel: TUNNEL_CONFIG, ship: SHIP_CONFIG, laser: LASER_CONFIG, track: TRACK_CONFIG, autopilot: AUTOPILOT_CONFIG, countdown: COUNTDOWN_CONFIG } = GAME_CONFIG;
+const SEGMENT_LENGTH = TUNNEL_CONFIG.segmentLength;
+const TUNNEL_WIDTH = TUNNEL_CONFIG.width;
+const TUNNEL_HEIGHT = TUNNEL_CONFIG.height;
+const SHIP_ACCEL = SHIP_CONFIG.accel;
+const SHIP_FRICTION = SHIP_CONFIG.friction;
+const SHIP_WIDTH = SHIP_CONFIG.width;
+const SHIP_HEIGHT = SHIP_CONFIG.height;
 
 export const EngineStatus = Object.freeze({
     MENU:      'menu',
@@ -62,7 +65,7 @@ export class GameEngine {
         this.state.lastFireTime = 0;
         
         this.state.gameState = EngineStatus.COUNTDOWN;
-        this.state.countdownTime = 3; // 3 seconds
+        this.state.countdownTime = COUNTDOWN_CONFIG.duration;
         this.state.lastBeepStep = -1;
         hideMenu();
         this.audio.stopMenuMusic();
@@ -75,8 +78,8 @@ export class GameEngine {
         this.audio.playCrashSound();
         showFlash();
         
-        this.state.speed *= 0.5;
-        this.state.cameraZ -= 200;
+        this.state.speed *= SHIP_CONFIG.crashSpeedPenalty;
+        this.state.cameraZ -= SHIP_CONFIG.crashRewind;
         if (this.state.cameraZ < 0) this.state.cameraZ = 0;
     }
 
@@ -91,7 +94,7 @@ export class GameEngine {
         const { state, input, audio } = this;
 
         if (state.gameState === EngineStatus.COUNTDOWN) {
-            const currentStep = Math.floor(state.countdownTime / 0.75);
+            const currentStep = Math.floor(state.countdownTime / COUNTDOWN_CONFIG.stepDuration);
             if (currentStep !== state.lastBeepStep && currentStep >= 0) {
                 audio.playCountdownBeep(currentStep === 0);
                 state.lastBeepStep = currentStep;
@@ -108,11 +111,11 @@ export class GameEngine {
             state.elapsedTime = (now - state.startTime) / 1000;
             
             if (input.controls.throttle) {
-                state.speed += 1500 * dt;
+                state.speed += SHIP_CONFIG.throttleAccel * dt;
             } else if (input.controls.brake) {
-                state.speed -= 3000 * dt;
+                state.speed -= SHIP_CONFIG.brakeDecel * dt;
             } else {
-                state.speed -= 800 * dt;
+                state.speed -= SHIP_CONFIG.coastDecel * dt;
             }
             
             state.speed = Math.max(0, Math.min(state.speed, state.MAX_SPEED));
@@ -124,7 +127,7 @@ export class GameEngine {
             if (input.controls.down) state.shipVY += SHIP_ACCEL * dt;
 
             // Shooting (renderer draws the twin lasers)
-            if (input.controls.fire && now - state.lastFireTime > 200) {
+            if (input.controls.fire && now - state.lastFireTime > LASER_CONFIG.fireCooldownMs) {
                 state.projectiles.push({
                     x: state.shipX,
                     y: state.shipY,
@@ -138,13 +141,13 @@ export class GameEngine {
             // Update projectiles and check for hits
             state.projectiles = state.projectiles.filter(p => {
                 const age = now - p.startTime;
-                if (age > LASER_LIFETIME) return false; // 0.5s lifetime
+                if (age > LASER_CONFIG.lifetimeMs) return false;
                 
                 const previousAge = Math.max(0, age - dt * 1000);
-                const previousProgress = previousAge / LASER_LIFETIME;
-                const progress = age / LASER_LIFETIME;
-                const previousHeadZ = p.z + LASER_START_OFFSET + previousProgress * LASER_RANGE;
-                const headZ = p.z + LASER_START_OFFSET + progress * LASER_RANGE;
+                const previousProgress = previousAge / LASER_CONFIG.lifetimeMs;
+                const progress = age / LASER_CONFIG.lifetimeMs;
+                const previousHeadZ = p.z + LASER_CONFIG.startOffset + previousProgress * LASER_CONFIG.range;
+                const headZ = p.z + LASER_CONFIG.startOffset + progress * LASER_CONFIG.range;
 
                 const startSegIdx = Math.max(0, Math.floor(Math.min(previousHeadZ, headZ) / SEGMENT_LENGTH));
                 const endSegIdx = Math.min(state.trackLength - 1, Math.floor(Math.max(previousHeadZ, headZ) / SEGMENT_LENGTH));
@@ -157,10 +160,9 @@ export class GameEngine {
                     const currentW = (TUNNEL_WIDTH * seg.widthFactor) / 2;
                     const currentH = (TUNNEL_HEIGHT * seg.heightFactor) / 2;
 
-                    if (seg.door.checkLaserHit(p.x, p.y, LASER_SIZE, LASER_SIZE, currentW, currentH, now)) {
-                        // Only activate/trigger the door if it's relatively close (e.g. < 4000 units)
+                    if (seg.door.checkLaserHit(p.x, p.y, LASER_CONFIG.hitSize, LASER_CONFIG.hitSize, currentW, currentH, now)) {
                         const distToDoor = seg.door.doorZ - state.cameraZ;
-                        if (distToDoor < 4000) {
+                        if (distToDoor < LASER_CONFIG.triggerDistance) {
                             seg.door.onHit(now);
                         } else {
                             seg.door.lastHitTime = now;
@@ -169,7 +171,7 @@ export class GameEngine {
                     }
                 }
                 
-                return headZ < state.cameraZ + LASER_RANGE; // Clip at distance
+                return headZ < state.cameraZ + LASER_CONFIG.range;
             });
             
             state.shipVX *= SHIP_FRICTION;
@@ -189,7 +191,7 @@ export class GameEngine {
             }
             
             // Enter exit zone — switch to cinematic autopilot
-            if (currentSegIndex >= state.trackLength - EXIT_ZONE_SEGMENTS) {
+            if (currentSegIndex >= state.trackLength - TRACK_CONFIG.exitZoneSegments) {
                 state.gameState = EngineStatus.EXITING;
                 audio.playVictoryMelody();
                 return;
@@ -208,13 +210,13 @@ export class GameEngine {
             let marginY = SHIP_HEIGHT / 2;
             let hitWall = false;
             
-            if (state.shipX < -currentW + marginX) { state.shipX = -currentW + marginX; state.shipVX = Math.abs(state.shipVX) * 1.2 + 200; hitWall = true; }
-            if (state.shipX > currentW - marginX) { state.shipX = currentW - marginX; state.shipVX = -Math.abs(state.shipVX) * 1.2 - 200; hitWall = true; }
-            if (state.shipY < -currentH + marginY) { state.shipY = -currentH + marginY; state.shipVY = Math.abs(state.shipVY) * 1.2 + 200; hitWall = true; }
-            if (state.shipY > currentH - marginY) { state.shipY = currentH - marginY; state.shipVY = -Math.abs(state.shipVY) * 1.2 - 200; hitWall = true; }
+            if (state.shipX < -currentW + marginX) { state.shipX = -currentW + marginX; state.shipVX = Math.abs(state.shipVX) * SHIP_CONFIG.wallBounce + SHIP_CONFIG.wallKick; hitWall = true; }
+            if (state.shipX > currentW - marginX) { state.shipX = currentW - marginX; state.shipVX = -Math.abs(state.shipVX) * SHIP_CONFIG.wallBounce - SHIP_CONFIG.wallKick; hitWall = true; }
+            if (state.shipY < -currentH + marginY) { state.shipY = -currentH + marginY; state.shipVY = Math.abs(state.shipVY) * SHIP_CONFIG.wallBounce + SHIP_CONFIG.wallKick; hitWall = true; }
+            if (state.shipY > currentH - marginY) { state.shipY = currentH - marginY; state.shipVY = -Math.abs(state.shipVY) * SHIP_CONFIG.wallBounce - SHIP_CONFIG.wallKick; hitWall = true; }
             
             if (hitWall) {
-                state.speed *= 0.4;
+                state.speed *= SHIP_CONFIG.wallSpeedPenalty;
                 audio.playScrapeSound();
             }
             
@@ -246,19 +248,19 @@ export class GameEngine {
             state.cameraZ += state.speed * dt;
             
             // Smoothly center the ship
-            state.shipX *= 0.92;
-            state.shipY *= 0.92;
-            state.shipVX *= 0.8;
-            state.shipVY *= 0.8;
+            state.shipX *= AUTOPILOT_CONFIG.centerDamping;
+            state.shipY *= AUTOPILOT_CONFIG.centerDamping;
+            state.shipVX *= AUTOPILOT_CONFIG.velocityDamping;
+            state.shipVY *= AUTOPILOT_CONFIG.velocityDamping;
             
             let currentSegIndex = Math.floor(state.cameraZ / SEGMENT_LENGTH);
-            if (currentSegIndex >= state.trackLength + 15) {
+            if (currentSegIndex >= state.trackLength + AUTOPILOT_CONFIG.finishPaddingSegments) {
                 this.handleWin();
             }
             
             audio.updateEngineSound(state.speed, state.MAX_SPEED);
         } else if (state.gameState === EngineStatus.WIN) {
-            state.speed *= 0.95;
+            state.speed *= AUTOPILOT_CONFIG.winDriftSpeedDamping;
             state.cameraZ += state.speed * dt;
             audio.updateEngineSound(state.speed, state.MAX_SPEED);
         }

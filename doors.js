@@ -1,6 +1,10 @@
-import { SEGMENT_LENGTH, SHIP_WIDTH, SHIP_HEIGHT } from './constants.js';
+import { GAME_CONFIG } from './gameConfig.js';
 
-const ACTIVATION_DISTANCE = 15 * SEGMENT_LENGTH; // 15 segments ahead
+const { tunnel: TUNNEL_CONFIG, ship: SHIP_CONFIG, doors: DOOR_CONFIG } = GAME_CONFIG;
+const SEGMENT_LENGTH = TUNNEL_CONFIG.segmentLength;
+const SHIP_WIDTH = SHIP_CONFIG.width;
+const SHIP_HEIGHT = SHIP_CONFIG.height;
+const ACTIVATION_DISTANCE = DOOR_CONFIG.activationDistanceSegments * SEGMENT_LENGTH;
 
 export class BaseDoor {
     constructor(speed, phaseOffset) {

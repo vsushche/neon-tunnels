@@ -1,6 +1,13 @@
-import { SEGMENT_LENGTH, TUNNEL_WIDTH, TUNNEL_HEIGHT, FOCAL_LENGTH, VISIBLE_SEGMENTS } from './constants.js';
+import { GAME_CONFIG } from './gameConfig.js';
 import { Starfield } from './stars.js';
 import { EngineStatus } from './engine.js';
+
+const { tunnel: TUNNEL_CONFIG, laser: LASER_CONFIG, render: RENDER_CONFIG } = GAME_CONFIG;
+const SEGMENT_LENGTH = TUNNEL_CONFIG.segmentLength;
+const TUNNEL_WIDTH = TUNNEL_CONFIG.width;
+const TUNNEL_HEIGHT = TUNNEL_CONFIG.height;
+const FOCAL_LENGTH = TUNNEL_CONFIG.focalLength;
+const VISIBLE_SEGMENTS = TUNNEL_CONFIG.visibleSegments;
 
 export class Renderer {
     constructor() {
@@ -8,7 +15,7 @@ export class Renderer {
         this.ctx = this.canvas.getContext('2d');
         this.width = 0;
         this.height = 0;
-        this.starfield = new Starfield(400, 4000, 4000);
+        this.starfield = new Starfield(RENDER_CONFIG.starCount, RENDER_CONFIG.starSpread, RENDER_CONFIG.starDepth);
         
         window.addEventListener('resize', () => this.resize());
         this.resize();
@@ -122,12 +129,12 @@ export class Renderer {
             let laserGlow = 0;
             state.projectiles.forEach(p => {
                 const age = now - p.startTime;
-                const progress = age / 500;
-                const headZ = p.z + 200 + progress * 15000;
+                const progress = age / LASER_CONFIG.lifetimeMs;
+                const headZ = p.z + LASER_CONFIG.startOffset + progress * LASER_CONFIG.range;
                 const dist = Math.abs(headZ - p1.seg.index * SEGMENT_LENGTH);
-                if (dist < 2000) {
+                if (dist < RENDER_CONFIG.laserGlowDistance) {
                     // Halved the intensity (from 0.8 to 0.4)
-                    let glow = (1 - dist/2000) * 0.4;
+                    let glow = (1 - dist / RENDER_CONFIG.laserGlowDistance) * 0.4;
                     // Fade glow with distance (dim is 1 near camera, 0 far away)
                     glow *= dim;
 
@@ -280,17 +287,17 @@ export class Renderer {
         
         state.projectiles.forEach(p => {
             const age = now - p.startTime;
-            const progress = age / 500;
+            const progress = age / LASER_CONFIG.lifetimeMs;
             
             // Laser bolt position in world Z
-            const laserSpeed = 15000;
-            const laserLength = 800;
+            const laserSpeed = LASER_CONFIG.range;
+            const laserLength = LASER_CONFIG.renderLength;
             
             // Head starts slightly ahead and flies forward
-            const headZ = p.z + 200 + progress * laserSpeed;
+            const headZ = p.z + LASER_CONFIG.startOffset + progress * laserSpeed;
             
             // Tail grows naturally from cannon, reaching full length after laserLength distance traveled
-            const distanceTraveled = headZ - (p.z + 200);
+            const distanceTraveled = headZ - (p.z + LASER_CONFIG.startOffset);
             const currentLength = Math.min(laserLength, distanceTraveled);
             const tailZ = headZ - currentLength;
             
@@ -300,8 +307,8 @@ export class Renderer {
             if (effectiveTailZ < minZ || effectiveTailZ >= maxZ) return;
             
             // Wing cannons: spread wide near fire point, converge over distance
-            const wingSpread = 600;
-            const convergeDistance = 8000; // Brought slightly closer again
+            const wingSpread = LASER_CONFIG.wingSpread;
+            const convergeDistance = LASER_CONFIG.convergeDistance;
             
             const sides = [-1, 1];
             
@@ -355,7 +362,7 @@ export class Renderer {
                 const ny = dx / len;
                 
                 // True 3D width using original projection scales
-                const baseWorldWidth = 40; 
+                const baseWorldWidth = LASER_CONFIG.worldWidth; 
                 const tailW = Math.max(0.5, (baseWorldWidth * tailScale) / 2);
                 const headW = Math.max(0.5, (baseWorldWidth * headScale) / 2);
 
@@ -369,7 +376,7 @@ export class Renderer {
                 this.ctx.fillStyle = '#ff1a1a'; // bright scarlet core
                 
                 // Fade out based on distance, not time! 
-                const visibleDistance = 15000;
+                const visibleDistance = LASER_CONFIG.range;
                 const distFade = Math.max(0, 1 - (tailRelZ / visibleDistance)); 
                 this.ctx.globalAlpha = distFade * distFade; // Quadratic fade
                 

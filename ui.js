@@ -1,4 +1,6 @@
-import { SEGMENT_LENGTH } from './constants.js';
+import { GAME_CONFIG } from './gameConfig.js';
+
+const SEGMENT_LENGTH = GAME_CONFIG.tunnel.segmentLength;
 
 const uiElements = {
     uiSpeed: document.getElementById('ui-speed'),

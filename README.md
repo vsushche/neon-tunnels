@@ -16,7 +16,7 @@ A modular, high-performance browser-based tunnel racing game built with Vanilla 
 - `input.js`: Keyboard input handling.
 - `audio.js`: Sound effect and music management.
 - `track.js`: Procedural tunnel and obstacle generation.
-- `constants.js`: Game balance and configuration parameters.
+- `gameConfig.js`: Game balance, geometry, rendering, and progression configuration.
 - `ui.js`: DOM-based HUD and menu updates.
 
 ### Controls
@@ -40,4 +40,4 @@ Codex must not start the development server automatically. The project owner sta
 
 
 ## Development
-To modify game mechanics (speed, acceleration, etc.), edit `constants.js`. To add new game states, update the `EngineStatus` enum and handlers in `engine.js`.
+To modify game mechanics (speed, acceleration, level length, laser behavior, etc.), edit `gameConfig.js`. To add new game states, update the `EngineStatus` enum and handlers in `engine.js`.
