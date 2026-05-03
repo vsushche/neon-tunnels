@@ -1,0 +1,31 @@
+{
+    "name": "Armageddon Run",
+    "length": 320,
+    "maxSpeed": 3500,
+    "theme": {
+        "hue1": 10,
+        "hue2": 190
+    },
+    "sections": [
+        { "from": 0, "to": 45, "curveX": 0, "curveY": 0, "widthFactor": 1.0, "heightFactor": 1.0 },
+        { "from": 45, "to": 92, "curveX": 0.04, "curveY": -0.02, "widthFactor": 0.8, "heightFactor": 0.95 },
+        { "from": 92, "to": 145, "curveX": -0.038, "curveY": 0.028, "widthFactor": 1.18, "heightFactor": 0.78 },
+        { "from": 145, "to": 205, "curveX": 0.025, "curveY": 0.034, "widthFactor": 0.72, "heightFactor": 1.22 },
+        { "from": 205, "to": 255, "curveX": -0.03, "curveY": -0.03, "widthFactor": 0.95, "heightFactor": 0.85 },
+        { "from": 255, "to": 290, "curveX": 0.018, "curveY": 0.012, "widthFactor": 1.15, "heightFactor": 1.0 },
+        { "from": 290, "to": 320, "curveX": 0, "curveY": 0, "widthFactor": 1.0, "heightFactor": 1.0 }
+    ],
+    "obstacles": [
+        { "segment": 38, "type": "door", "doorType": "double", "orientation": "vertical", "hue": 25, "phaseOffset": 0.5, "speed": 1.4, "transitionTime": 1.7 },
+        { "segment": 60, "type": "mine", "x": -280, "y": 130 },
+        { "segment": 82, "type": "door", "doorType": "gate", "direction": "horizontal", "hue": 205, "phaseOffset": 1.2, "speed": 1.55, "gapRatio": 0.34 },
+        { "segment": 106, "type": "mine", "x": 310, "y": -160 },
+        { "segment": 130, "type": "door", "doorType": "sensor", "orientation": "horizontal", "hue": 280, "phaseOffset": 0, "speed": 1.0, "openTime": 1.0 },
+        { "segment": 156, "type": "door", "doorType": "single", "origin": "bottom", "hue": 60, "phaseOffset": 0.2, "speed": 1.55, "transitionTime": 1.5 },
+        { "segment": 182, "type": "mine", "x": -80, "y": -230 },
+        { "segment": 206, "type": "door", "doorType": "double", "orientation": "horizontal", "hue": 150, "phaseOffset": 1.8, "speed": 1.6, "transitionTime": 1.4 },
+        { "segment": 232, "type": "mine", "x": 260, "y": 0 },
+        { "segment": 254, "type": "door", "doorType": "sensor", "orientation": "vertical", "hue": 280, "phaseOffset": 0, "speed": 1.0, "openTime": 0.95 },
+        { "segment": 278, "type": "door", "doorType": "gate", "direction": "vertical", "hue": 330, "phaseOffset": 0.8, "speed": 1.7, "gapRatio": 0.33 }
+    ]
+}

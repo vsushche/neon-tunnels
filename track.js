@@ -1,115 +1,91 @@
 import { GAME_CONFIG } from './gameConfig.js';
 import { DoubleDoor, SingleDoor, GateDoor, SensorDoor } from './doors.js';
+import { loadLevel } from './levelLoader.js';
 
-const { tunnel: TUNNEL_CONFIG, track: TRACK_CONFIG } = GAME_CONFIG;
+const { tunnel: TUNNEL_CONFIG } = GAME_CONFIG;
 const SEGMENT_LENGTH = TUNNEL_CONFIG.segmentLength;
-const TUNNEL_WIDTH = TUNNEL_CONFIG.width;
-const TUNNEL_HEIGHT = TUNNEL_CONFIG.height;
 
-export function createTrack(level) {
-    let track = [];
-    let trackLength = TRACK_CONFIG.baseLength + level * TRACK_CONFIG.levelLengthStep;
-    let maxSpeed = TRACK_CONFIG.baseMaxSpeed + level * TRACK_CONFIG.levelMaxSpeedStep;
-    
-    let currentCurveX = 0;
-    let currentCurveY = 0;
-    
-    let currentWidthFactor = 1.0;
-    let targetWidthFactor = 1.0;
-    let currentHeightFactor = 1.0;
-    let targetHeightFactor = 1.0;
-    
-    const hue1 = (level * 60) % 360;
-    const hue2 = (hue1 + 180) % 360;
-    
+export async function createTrack(level) {
+    const levelData = await loadLevel(level);
+    const trackLength = levelData.length;
+    const obstacleMap = buildObstacleMap(levelData.obstacles || []);
+    const track = [];
+
     for (let i = 0; i < trackLength; i++) {
-        if (i % TRACK_CONFIG.dimensionChangeInterval === 0 &&
-            i > TRACK_CONFIG.dimensionChangeStart &&
-            i < trackLength - TRACK_CONFIG.dimensionChangeEndPadding) {
-            targetWidthFactor = TRACK_CONFIG.minDimensionFactor + Math.random() * TRACK_CONFIG.dimensionFactorRange;
-            targetHeightFactor = TRACK_CONFIG.minDimensionFactor + Math.random() * TRACK_CONFIG.dimensionFactorRange;
-            
-            // Randomly change curves too
-            currentCurveX = (Math.random() - 0.5) * 0.1 * (1 + level * 0.2);
-            currentCurveY = (Math.random() - 0.5) * 0.1 * (1 + level * 0.2);
-        }
-        
-        // Smooth interpolation
-        currentWidthFactor += (targetWidthFactor - currentWidthFactor) * TRACK_CONFIG.dimensionLerp;
-        currentHeightFactor += (targetHeightFactor - currentHeightFactor) * TRACK_CONFIG.dimensionLerp;
-        
-        if (i > trackLength - TRACK_CONFIG.finalStraightSegments) {
-            currentCurveX = 0;
-            currentCurveY = 0;
-            targetWidthFactor = 1.0;
-            targetHeightFactor = 1.0;
-        }
+        const section = findSection(levelData.sections, i);
+        const obstacle = obstacleMap.get(i);
+        const door = obstacle?.type === 'door' ? createDoor(obstacle, i) : null;
+        const colorIndex = Math.floor(i / 2) % 2;
 
-        let type = 'normal';
-        let doorPhaseOffset = 0;
-        let doorSpeed = 1 + level * 0.2;
-        let doorObj = null;
-        
-        if (i > TRACK_CONFIG.safeStartSegments && i < trackLength - TRACK_CONFIG.safeEndSegments) {
-            if (i % TRACK_CONFIG.doorInterval === 0) {
-                type = 'door';
-                doorPhaseOffset = Math.random() * Math.PI * 2;
-
-                let rnd = Math.random();
-                if (rnd < 0.25) {
-                    let orientation = Math.random() > 0.5 ? 'vertical' : 'horizontal';
-                    doorObj = new DoubleDoor(orientation, doorSpeed, doorPhaseOffset);
-                    doorObj.hue = Math.random() * 260; // Avoid Purple range
-                } else if (rnd < 0.50) {
-                    const origins = ['top', 'bottom', 'left', 'right'];
-                    let origin = origins[Math.floor(Math.random() * origins.length)];
-                    doorObj = new SingleDoor(origin, doorSpeed, doorPhaseOffset);
-                    doorObj.hue = Math.random() * 260;
-                } else if (rnd < 0.75) {
-                    let direction = Math.random() > 0.5 ? 'horizontal' : 'vertical';
-                    doorObj = new GateDoor(direction, doorSpeed, doorPhaseOffset);
-                    doorObj.hue = Math.random() * 260;
-                } else {
-                    let orientation = Math.random() > 0.5 ? 'vertical' : 'horizontal';
-                    doorObj = new SensorDoor(orientation, doorSpeed, doorPhaseOffset);
-                    doorObj.hue = 280; // Fixed Purple for SensorDoors
-                }
-                doorObj.doorZ = i * SEGMENT_LENGTH;
-                
-                // Randomize timing: 70% slow doors, 30% fast doors
-                // Opening and closing use the same duration so panel speed matches both ways.
-                let transitionTime;
-                if (Math.random() < 0.7) {
-                    transitionTime = 2.0 + Math.random() * 1.0;
-                } else {
-                    transitionTime = 1.0 + Math.random() * 0.5;
-                }
-                doorObj.closeTime = transitionTime;
-                doorObj.openTime = transitionTime;
-            } else if (i % TRACK_CONFIG.mineInterval === 0) {
-                type = 'mine';
-            }
-        }
-        
-        let colorIndex = Math.floor(i / 2) % 2;
-        
         track.push({
             index: i,
             z: i * SEGMENT_LENGTH,
-            curveX: currentCurveX,
-            curveY: currentCurveY,
-            colorIndex: colorIndex,
-            type: type,
-            widthFactor: currentWidthFactor,
-            heightFactor: currentHeightFactor,
-            doorPhaseOffset: doorPhaseOffset,
-            doorSpeed: doorSpeed,
-            mineX: type === 'mine' ? (Math.random() - 0.5) * (TUNNEL_WIDTH * currentWidthFactor - TRACK_CONFIG.minePadding) : 0,
-            mineY: type === 'mine' ? (Math.random() - 0.5) * (TUNNEL_HEIGHT * currentHeightFactor - TRACK_CONFIG.minePadding) : 0,
-            door: doorObj,
-            hue: colorIndex === 0 ? hue1 : hue2,
+            curveX: section.curveX || 0,
+            curveY: section.curveY || 0,
+            colorIndex,
+            type: obstacle?.type || 'normal',
+            widthFactor: section.widthFactor ?? 1,
+            heightFactor: section.heightFactor ?? 1,
+            doorPhaseOffset: obstacle?.phaseOffset || 0,
+            doorSpeed: obstacle?.speed || 1,
+            mineX: obstacle?.type === 'mine' ? obstacle.x || 0 : 0,
+            mineY: obstacle?.type === 'mine' ? obstacle.y || 0 : 0,
+            door,
+            hue: colorIndex === 0 ? levelData.theme.hue1 : levelData.theme.hue2,
             passed: false
         });
     }
-    return { track, trackLength, maxSpeed };
+
+    return {
+        track,
+        trackLength,
+        maxSpeed: levelData.maxSpeed,
+        levelName: levelData.name
+    };
+}
+
+function buildObstacleMap(obstacles) {
+    const obstacleMap = new Map();
+    for (const obstacle of obstacles) {
+        obstacleMap.set(obstacle.segment, obstacle);
+    }
+    return obstacleMap;
+}
+
+function findSection(sections, segmentIndex) {
+    return sections.find(section => segmentIndex >= section.from && segmentIndex < section.to) || sections[sections.length - 1];
+}
+
+function createDoor(obstacle, segmentIndex) {
+    const speed = obstacle.speed || 1;
+    const phaseOffset = obstacle.phaseOffset || 0;
+    let door;
+
+    if (obstacle.doorType === 'double') {
+        door = new DoubleDoor(obstacle.orientation || 'vertical', speed, phaseOffset);
+    } else if (obstacle.doorType === 'single') {
+        door = new SingleDoor(obstacle.origin || 'top', speed, phaseOffset);
+    } else if (obstacle.doorType === 'gate') {
+        door = new GateDoor(obstacle.direction || 'horizontal', speed, phaseOffset);
+        if (obstacle.gapRatio) {
+            door.gapRatio = obstacle.gapRatio;
+        }
+    } else if (obstacle.doorType === 'sensor') {
+        door = new SensorDoor(obstacle.orientation || 'vertical', speed, phaseOffset);
+        if (obstacle.openTime) {
+            door.openTime = obstacle.openTime;
+        }
+    } else {
+        throw new Error(`Unknown door type: ${obstacle.doorType}`);
+    }
+
+    door.doorZ = segmentIndex * SEGMENT_LENGTH;
+    door.hue = obstacle.hue ?? door.hue;
+
+    if (obstacle.transitionTime) {
+        door.closeTime = obstacle.transitionTime;
+        door.openTime = obstacle.transitionTime;
+    }
+
+    return door;
 }

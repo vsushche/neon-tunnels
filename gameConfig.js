@@ -1,4 +1,7 @@
 export const GAME_CONFIG = Object.freeze({
+    levels: {
+        count: 3
+    },
     tunnel: {
         segmentLength: 200,
         width: 1200,
@@ -33,23 +36,7 @@ export const GAME_CONFIG = Object.freeze({
         worldWidth: 40
     },
     track: {
-        baseLength: 200,
-        levelLengthStep: 100,
-        baseMaxSpeed: 2000,
-        levelMaxSpeedStep: 500,
-        dimensionChangeInterval: 60,
-        doorInterval: 40,
-        mineInterval: 27,
-        safeStartSegments: 30,
-        safeEndSegments: 30,
-        exitZoneSegments: 15,
-        finalStraightSegments: 20,
-        dimensionChangeStart: 20,
-        dimensionChangeEndPadding: 40,
-        minDimensionFactor: 0.5,
-        dimensionFactorRange: 1.0,
-        dimensionLerp: 0.08,
-        minePadding: 200
+        exitZoneSegments: 15
     },
     doors: {
         activationDistanceSegments: 15

@@ -11,7 +11,7 @@ export class BaseDoor {
         this.speed = speed;
         this.phaseOffset = phaseOffset;
         this.passed = false;
-        this.hue = Math.floor(Math.random() * 360);
+        this.hue = 0;
         
         // Activation system
         this.doorZ = 0;         // set by track generator

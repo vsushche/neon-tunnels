@@ -2,7 +2,7 @@ import { GAME_CONFIG } from './gameConfig.js';
 import { updateHUD, showFlash, showMenu, hideMenu } from './ui.js';
 import { createTrack } from './track.js';
 
-const { tunnel: TUNNEL_CONFIG, ship: SHIP_CONFIG, laser: LASER_CONFIG, track: TRACK_CONFIG, autopilot: AUTOPILOT_CONFIG, countdown: COUNTDOWN_CONFIG } = GAME_CONFIG;
+const { levels: LEVEL_CONFIG, tunnel: TUNNEL_CONFIG, ship: SHIP_CONFIG, laser: LASER_CONFIG, track: TRACK_CONFIG, autopilot: AUTOPILOT_CONFIG, countdown: COUNTDOWN_CONFIG } = GAME_CONFIG;
 const SEGMENT_LENGTH = TUNNEL_CONFIG.segmentLength;
 const TUNNEL_WIDTH = TUNNEL_CONFIG.width;
 const TUNNEL_HEIGHT = TUNNEL_CONFIG.height;
@@ -16,7 +16,8 @@ export const EngineStatus = Object.freeze({
     COUNTDOWN: 'countdown',
     PLAYING:   'playing',
     EXITING:   'exiting',
-    WIN:       'win'
+    WIN:       'win',
+    COMPLETE:  'complete'
 });
 
 export class GameState {
@@ -48,8 +49,8 @@ export class GameEngine {
         this.state = new GameState();
     }
 
-    start(level) {
-        const trackData = createTrack(level);
+    async start(level) {
+        const trackData = await createTrack(level);
         this.state.track = trackData.track;
         this.state.trackLength = trackData.trackLength;
         this.state.MAX_SPEED = trackData.maxSpeed;
@@ -84,10 +85,25 @@ export class GameEngine {
     }
 
     handleWin() {
-        this.state.gameState = EngineStatus.WIN;
         this.audio.stopEngineSound();
         this.audio.startMenuMusic();
-        showMenu(`MISSION COMPLETE! LEVEL ${this.state.currentLevel} CLEAR.`, "#00ffcc", "NEXT LEVEL");
+
+        if (this.state.currentLevel >= LEVEL_CONFIG.count) {
+            this.state.gameState = EngineStatus.COMPLETE;
+            showMenu("ARMAGEDDON AVERTED. ALL TUNNELS CLEAR.", "RESTART");
+        } else {
+            this.state.gameState = EngineStatus.WIN;
+            showMenu(`MISSION COMPLETE! LEVEL ${this.state.currentLevel} CLEAR.`, "NEXT LEVEL");
+        }
+    }
+
+    showCompleteScreen() {
+        this.state.gameState = EngineStatus.COMPLETE;
+        this.state.currentLevel = LEVEL_CONFIG.count;
+        this.audio.stopEngineSound();
+        this.audio.startMenuMusic();
+        showMenu("ARMAGEDDON AVERTED. ALL TUNNELS CLEAR.", "RESTART");
+        updateHUD(this.state);
     }
 
     update(dt, now) {
@@ -260,6 +276,10 @@ export class GameEngine {
             
             audio.updateEngineSound(state.speed, state.MAX_SPEED);
         } else if (state.gameState === EngineStatus.WIN) {
+            state.speed *= AUTOPILOT_CONFIG.winDriftSpeedDamping;
+            state.cameraZ += state.speed * dt;
+            audio.updateEngineSound(state.speed, state.MAX_SPEED);
+        } else if (state.gameState === EngineStatus.COMPLETE) {
             state.speed *= AUTOPILOT_CONFIG.winDriftSpeedDamping;
             state.cameraZ += state.speed * dt;
             audio.updateEngineSound(state.speed, state.MAX_SPEED);

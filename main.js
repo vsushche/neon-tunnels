@@ -1,7 +1,7 @@
 import { InputHandler } from './input.js';
 import { Renderer } from './renderer.js';
 import { GameEngine, EngineStatus } from './engine.js';
-import { onStartBtnClick } from './ui.js';
+import { onSecretCompleteClick, onStartBtnClick } from './ui.js';
 import { AudioManager } from './audio.js';
 
 const input = new InputHandler();
@@ -14,13 +14,17 @@ window.onclick = () => {
 }
 
 
-onStartBtnClick(() => {
+onStartBtnClick(async () => {
     audio.stopMenuMusic();
     if (engine.state.gameState === EngineStatus.WIN) {
-        engine.start(engine.state.currentLevel + 1);
+        await engine.start(engine.state.currentLevel + 1);
     } else {
-        engine.start(1);
+        await engine.start(1);
     }
+});
+
+onSecretCompleteClick(() => {
+    engine.showCompleteScreen();
 });
 
 let lastTime = performance.now();

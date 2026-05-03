@@ -11,7 +11,8 @@ const uiElements = {
     flashOverlay: document.getElementById('flash-overlay'),
     menuScreen: document.getElementById('menu-screen'),
     startBtn: document.getElementById('start-btn'),
-    menuTitle: document.getElementById('menu-title')
+    menuTitle: document.getElementById('menu-title'),
+    secretCompleteBtn: document.getElementById('secret-complete-btn')
 };
 
 export function updateHUD(state) {
@@ -30,9 +31,8 @@ export function showFlash() {
     }, 50);
 }
 
-export function showMenu(title, color, btnText) {
+export function showMenu(title, btnText) {
     uiElements.menuTitle.innerText = title;
-    uiElements.menuTitle.style.color = color;
     uiElements.startBtn.innerText = btnText;
     uiElements.menuScreen.classList.remove('hidden');
 }
@@ -43,4 +43,8 @@ export function hideMenu() {
 
 export function onStartBtnClick(callback) {
     uiElements.startBtn.addEventListener('click', callback);
+}
+
+export function onSecretCompleteClick(callback) {
+    uiElements.secretCompleteBtn.addEventListener('click', callback);
 }

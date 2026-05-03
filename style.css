@@ -55,6 +55,25 @@ body, html {
     transition: none;
 }
 
+#secret-complete-btn {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    width: 14px;
+    height: 14px;
+    padding: 0;
+    border: 1px solid rgba(0, 255, 204, 0.08);
+    border-radius: 50%;
+    background: rgba(0, 255, 204, 0.03);
+    cursor: pointer;
+    z-index: 30;
+}
+
+#secret-complete-btn:hover {
+    border-color: rgba(0, 255, 204, 0.6);
+    background: rgba(0, 255, 204, 0.25);
+}
+
 /* UI HUD */
 #hud {
     position: absolute;
