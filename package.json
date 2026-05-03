@@ -1,0 +1,8 @@
+{
+  "name": "neon-tunnels",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "start": "npx -y live-server"
+  }
+}
