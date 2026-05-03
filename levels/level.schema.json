@@ -1,0 +1,222 @@
+{
+    "$schema": "https://json-schema.org/draft/2020-12/schema",
+    "$id": "https://github.com/vsushche/neon-tunnels/levels/level.schema.json",
+    "title": "Neon Tunnels Level",
+    "description": "Authored level data for Neon Tunnels. This schema is a generation contract, not a runtime validator.",
+    "type": "object",
+    "additionalProperties": false,
+    "required": ["name", "length", "maxSpeed", "theme", "sections", "obstacles"],
+    "properties": {
+        "name": {
+            "type": "string",
+            "minLength": 1,
+            "description": "Human-readable level name."
+        },
+        "length": {
+            "type": "integer",
+            "minimum": 1,
+            "description": "Level length in tunnel segments."
+        },
+        "maxSpeed": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "Maximum ship speed for this level."
+        },
+        "theme": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["hue1", "hue2"],
+            "properties": {
+                "hue1": { "$ref": "#/$defs/hue" },
+                "hue2": { "$ref": "#/$defs/hue" }
+            }
+        },
+        "sections": {
+            "type": "array",
+            "minItems": 1,
+            "description": "Continuous tunnel sections. The game uses the section whose from/to range contains the segment.",
+            "items": { "$ref": "#/$defs/section" }
+        },
+        "obstacles": {
+            "type": "array",
+            "description": "Door and mine placements by segment.",
+            "items": { "$ref": "#/$defs/obstacle" }
+        }
+    },
+    "$defs": {
+        "hue": {
+            "type": "number",
+            "minimum": 0,
+            "exclusiveMaximum": 360,
+            "description": "HSL hue value in degrees."
+        },
+        "section": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["from", "to", "curveX", "curveY", "widthFactor", "heightFactor"],
+            "properties": {
+                "from": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Inclusive start segment."
+                },
+                "to": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "description": "Exclusive end segment."
+                },
+                "curveX": {
+                    "type": "number",
+                    "description": "Horizontal curve contribution per segment."
+                },
+                "curveY": {
+                    "type": "number",
+                    "description": "Vertical curve contribution per segment."
+                },
+                "widthFactor": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "description": "Tunnel width multiplier."
+                },
+                "heightFactor": {
+                    "type": "number",
+                    "exclusiveMinimum": 0,
+                    "description": "Tunnel height multiplier."
+                }
+            }
+        },
+        "obstacle": {
+            "oneOf": [
+                { "$ref": "#/$defs/mineObstacle" },
+                { "$ref": "#/$defs/doubleDoorObstacle" },
+                { "$ref": "#/$defs/singleDoorObstacle" },
+                { "$ref": "#/$defs/gateDoorObstacle" },
+                { "$ref": "#/$defs/sensorDoorObstacle" }
+            ]
+        },
+        "baseObstacle": {
+            "type": "object",
+            "required": ["segment", "type"],
+            "properties": {
+                "segment": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "description": "Segment index where the obstacle is placed."
+                },
+                "type": {
+                    "type": "string"
+                }
+            }
+        },
+        "mineObstacle": {
+            "allOf": [
+                { "$ref": "#/$defs/baseObstacle" },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["segment", "type", "x", "y"],
+                    "properties": {
+                        "segment": { "type": "integer", "minimum": 0 },
+                        "type": { "const": "mine" },
+                        "x": { "type": "number" },
+                        "y": { "type": "number" }
+                    }
+                }
+            ]
+        },
+        "baseDoorObstacle": {
+            "type": "object",
+            "required": ["segment", "type", "doorType"],
+            "properties": {
+                "segment": { "type": "integer", "minimum": 0 },
+                "type": { "const": "door" },
+                "doorType": { "type": "string" },
+                "hue": { "$ref": "#/$defs/hue" },
+                "phaseOffset": { "type": "number" },
+                "speed": { "type": "number", "exclusiveMinimum": 0 },
+                "transitionTime": { "type": "number", "exclusiveMinimum": 0 }
+            }
+        },
+        "doubleDoorObstacle": {
+            "allOf": [
+                { "$ref": "#/$defs/baseDoorObstacle" },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["segment", "type", "doorType", "orientation"],
+                    "properties": {
+                        "segment": { "type": "integer", "minimum": 0 },
+                        "type": { "const": "door" },
+                        "doorType": { "const": "double" },
+                        "orientation": { "enum": ["vertical", "horizontal"] },
+                        "hue": { "$ref": "#/$defs/hue" },
+                        "phaseOffset": { "type": "number" },
+                        "speed": { "type": "number", "exclusiveMinimum": 0 },
+                        "transitionTime": { "type": "number", "exclusiveMinimum": 0 }
+                    }
+                }
+            ]
+        },
+        "singleDoorObstacle": {
+            "allOf": [
+                { "$ref": "#/$defs/baseDoorObstacle" },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["segment", "type", "doorType", "origin"],
+                    "properties": {
+                        "segment": { "type": "integer", "minimum": 0 },
+                        "type": { "const": "door" },
+                        "doorType": { "const": "single" },
+                        "origin": { "enum": ["top", "bottom", "left", "right"] },
+                        "hue": { "$ref": "#/$defs/hue" },
+                        "phaseOffset": { "type": "number" },
+                        "speed": { "type": "number", "exclusiveMinimum": 0 },
+                        "transitionTime": { "type": "number", "exclusiveMinimum": 0 }
+                    }
+                }
+            ]
+        },
+        "gateDoorObstacle": {
+            "allOf": [
+                { "$ref": "#/$defs/baseDoorObstacle" },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["segment", "type", "doorType", "direction"],
+                    "properties": {
+                        "segment": { "type": "integer", "minimum": 0 },
+                        "type": { "const": "door" },
+                        "doorType": { "const": "gate" },
+                        "direction": { "enum": ["vertical", "horizontal"] },
+                        "hue": { "$ref": "#/$defs/hue" },
+                        "phaseOffset": { "type": "number" },
+                        "speed": { "type": "number", "exclusiveMinimum": 0 },
+                        "gapRatio": { "type": "number", "exclusiveMinimum": 0 },
+                        "transitionTime": { "type": "number", "exclusiveMinimum": 0 }
+                    }
+                }
+            ]
+        },
+        "sensorDoorObstacle": {
+            "allOf": [
+                { "$ref": "#/$defs/baseDoorObstacle" },
+                {
+                    "type": "object",
+                    "additionalProperties": false,
+                    "required": ["segment", "type", "doorType", "orientation"],
+                    "properties": {
+                        "segment": { "type": "integer", "minimum": 0 },
+                        "type": { "const": "door" },
+                        "doorType": { "const": "sensor" },
+                        "orientation": { "enum": ["vertical", "horizontal"] },
+                        "hue": { "$ref": "#/$defs/hue" },
+                        "phaseOffset": { "type": "number" },
+                        "speed": { "type": "number", "exclusiveMinimum": 0 },
+                        "openTime": { "type": "number", "exclusiveMinimum": 0 }
+                    }
+                }
+            ]
+        }
+    }
+}
