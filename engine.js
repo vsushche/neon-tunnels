@@ -97,15 +97,6 @@ export class GameEngine {
         }
     }
 
-    showCompleteScreen() {
-        this.state.gameState = EngineStatus.COMPLETE;
-        this.state.currentLevel = LEVEL_CONFIG.count;
-        this.audio.stopEngineSound();
-        this.audio.startMenuMusic();
-        showMenu("ARMAGEDDON AVERTED. ALL TUNNELS CLEAR.", "RESTART");
-        updateHUD(this.state);
-    }
-
     update(dt, now) {
         const { state, input, audio } = this;
 

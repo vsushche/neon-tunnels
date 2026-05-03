@@ -12,8 +12,7 @@ const uiElements = {
     menuScreen: document.getElementById('menu-screen'),
     startBtn: document.getElementById('start-btn'),
     menuTitle: document.getElementById('menu-title'),
-    menuDesc: document.getElementById('menu-desc'),
-    secretCompleteBtn: document.getElementById('secret-complete-btn')
+    menuDesc: document.getElementById('menu-desc')
 };
 
 export function updateHUD(state) {
@@ -45,8 +44,4 @@ export function hideMenu() {
 
 export function onStartBtnClick(callback) {
     uiElements.startBtn.addEventListener('click', callback);
-}
-
-export function onSecretCompleteClick(callback) {
-    uiElements.secretCompleteBtn.addEventListener('click', callback);
 }
