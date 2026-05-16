@@ -224,17 +224,77 @@ export class Renderer {
             const mX = p2.sx + p2.seg.mineX * mScale;
             const mY = p2.sy + p2.seg.mineY * mScale;
             const mRadius = 50 * mScale;
-            
-            this.ctx.beginPath();
-            this.ctx.arc(mX, mY, mRadius, 0, Math.PI * 2);
-            this.ctx.fillStyle = '#ffaa00';
-            this.ctx.fill();
-            
-            this.ctx.beginPath();
-            this.ctx.arc(mX, mY, mRadius * 0.5, 0, Math.PI * 2);
-            this.ctx.fillStyle = '#ffffff';
-            this.ctx.fill();
+            this.renderEnergyMine(mX, mY, mRadius, now, dim, p2.seg.index);
         }
+    }
+
+    renderEnergyMine(x, y, radius, now, dim, seed = 0) {
+        if (radius <= 0.5 || dim <= 0) return;
+
+        const ctx = this.ctx;
+        const time = now * 0.001;
+        const phase = time * 4.8 + seed * 0.41;
+        const pulse = 0.5 + Math.sin(phase) * 0.5;
+        const flicker = 0.5 + Math.sin(phase * 1.7 + seed) * 0.5;
+        const outerRadius = radius * (1.75 + pulse * 0.45);
+        const bodyRadius = radius * (0.82 + pulse * 0.18);
+        const coreRadius = radius * (0.28 + flicker * 0.08);
+        const alpha = Math.min(1, dim * 1.25);
+
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+
+        const aura = ctx.createRadialGradient(x, y, radius * 0.15, x, y, outerRadius);
+        aura.addColorStop(0, `rgba(255, 255, 255, ${0.34 * alpha})`);
+        aura.addColorStop(0.2, `rgba(0, 255, 255, ${0.46 * alpha})`);
+        aura.addColorStop(0.58, `rgba(255, 79, 216, ${0.2 * alpha})`);
+        aura.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = aura;
+        ctx.beginPath();
+        ctx.arc(x, y, outerRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        const spikes = 18;
+        ctx.beginPath();
+        for (let i = 0; i <= spikes; i++) {
+            const angle = (i / spikes) * Math.PI * 2;
+            const ripple = Math.sin(angle * 5 + phase * 1.6) * 0.16 + Math.sin(angle * 9 - phase) * 0.08;
+            const r = bodyRadius * (1 + ripple);
+            const px = x + Math.cos(angle) * r;
+            const py = y + Math.sin(angle) * r;
+            if (i === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        const plasma = ctx.createRadialGradient(x, y, coreRadius * 0.2, x, y, bodyRadius * 1.25);
+        plasma.addColorStop(0, `rgba(255, 255, 255, ${0.92 * alpha})`);
+        plasma.addColorStop(0.26, `rgba(137, 255, 255, ${0.72 * alpha})`);
+        plasma.addColorStop(0.62, `rgba(255, 170, 0, ${0.5 * alpha})`);
+        plasma.addColorStop(1, `rgba(255, 40, 174, ${0.08 * alpha})`);
+        ctx.fillStyle = plasma;
+        ctx.fill();
+
+        ctx.lineCap = 'round';
+        for (let i = 0; i < 3; i++) {
+            const spin = phase * (i % 2 === 0 ? 0.42 : -0.34) + i * Math.PI * 0.68;
+            const arcRadius = radius * (0.95 + i * 0.18 + pulse * 0.08);
+            ctx.strokeStyle = i === 1
+                ? `rgba(255, 210, 67, ${0.58 * alpha})`
+                : `rgba(72, 245, 255, ${0.62 * alpha})`;
+            ctx.lineWidth = Math.max(1, radius * (0.06 - i * 0.008));
+            ctx.beginPath();
+            ctx.arc(x, y, arcRadius, spin, spin + Math.PI * (0.72 + pulse * 0.18));
+            ctx.stroke();
+        }
+
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.95 * alpha})`;
+        ctx.shadowBlur = radius * (1.4 + pulse);
+        ctx.shadowColor = '#6fffff';
+        ctx.beginPath();
+        ctx.arc(x, y, coreRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
     }
 
     renderCountdown(state) {
