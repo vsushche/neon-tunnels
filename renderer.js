@@ -49,10 +49,52 @@ export class Renderer {
         
         this.renderStars(state, baseIndex);
         this.renderTunnel(state, now, baseIndex);
+        this.renderReticle(state);
         
         if (state.gameState === EngineStatus.COUNTDOWN) {
             this.renderCountdown(state);
         }
+    }
+
+    renderReticle(state) {
+        if (state.gameState !== EngineStatus.PLAYING && state.gameState !== EngineStatus.EXITING) return;
+
+        const ctx = this.ctx;
+        const x = this.width / 2;
+        const y = this.height / 2;
+        const radius = RENDER_CONFIG.reticleRadius;
+        const lineLength = RENDER_CONFIG.reticleLineLength;
+        const gap = RENDER_CONFIG.reticleGap;
+
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.strokeStyle = 'rgba(0, 255, 204, 0.82)';
+        ctx.lineWidth = 1.5;
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = '#00ffcc';
+
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(x - radius - gap - lineLength, y);
+        ctx.lineTo(x - radius - gap, y);
+        ctx.moveTo(x + radius + gap, y);
+        ctx.lineTo(x + radius + gap + lineLength, y);
+        ctx.moveTo(x, y - radius - gap - lineLength);
+        ctx.lineTo(x, y - radius - gap);
+        ctx.moveTo(x, y + radius + gap);
+        ctx.lineTo(x, y + radius + gap + lineLength);
+        ctx.stroke();
+
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+        ctx.shadowBlur = 4;
+        ctx.beginPath();
+        ctx.arc(x, y, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
     }
 
     renderStars(state, baseIndex) {
