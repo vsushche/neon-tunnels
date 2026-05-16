@@ -125,26 +125,11 @@ export class Renderer {
                 dim += 0.5;
             }
 
-            // Laser illumination factor
-            let laserGlow = 0;
-            state.projectiles.forEach(p => {
-                const age = now - p.startTime;
-                const progress = age / LASER_CONFIG.lifetimeMs;
-                const headZ = p.z + LASER_CONFIG.startOffset + progress * LASER_CONFIG.range;
-                const dist = Math.abs(headZ - p1.seg.index * SEGMENT_LENGTH);
-                if (dist < RENDER_CONFIG.laserGlowDistance) {
-                    // Halved the intensity (from 0.8 to 0.4)
-                    let glow = (1 - dist / RENDER_CONFIG.laserGlowDistance) * 0.4;
-                    // Fade glow with distance (dim is 1 near camera, 0 far away)
-                    glow *= dim;
-
-                    laserGlow += glow;
-                }
-            });
-            laserGlow = Math.min(1.5, laserGlow);
+            const laserGlow = this.getLaserGlow(state.projectiles, now, p1.seg.index, dim);
+            const explosionGlow = this.getExplosionGlow(state, now, p1.seg.index, dim);
             
-            this.renderSegmentPolygons(p1, p2, dim, laserGlow);
-            this.renderSegmentWires(p1, p2, dim, laserGlow);
+            this.renderSegmentPolygons(p1, p2, dim, laserGlow, explosionGlow);
+            this.renderSegmentWires(p1, p2, dim, laserGlow, explosionGlow);
             
             // Draw projectiles that are physically in this segment (behind p2 obstacles)
             const minZ = p2.seg.index * SEGMENT_LENGTH;
@@ -155,7 +140,48 @@ export class Renderer {
         }
     }
 
-    renderSegmentPolygons(p1, p2, dim, laserGlow = 0) {
+    getLaserGlow(projectiles, now, segmentIndex, dim) {
+        let laserGlow = 0;
+
+        projectiles.forEach(p => {
+            const age = now - p.startTime;
+            const progress = age / LASER_CONFIG.lifetimeMs;
+            const headZ = p.z + LASER_CONFIG.startOffset + progress * LASER_CONFIG.range;
+            const dist = Math.abs(headZ - segmentIndex * SEGMENT_LENGTH);
+            if (dist < RENDER_CONFIG.laserGlowDistance) {
+                let glow = (1 - dist / RENDER_CONFIG.laserGlowDistance) * 0.4;
+                glow *= dim;
+
+                laserGlow += glow;
+            }
+        });
+
+        return Math.min(1.5, laserGlow);
+    }
+
+    getExplosionGlow(state, now, segmentIndex, dim) {
+        let explosionGlow = 0;
+
+        for (let i = 0; i < state.track.length; i++) {
+            const seg = state.track[i];
+            if (!seg.mineExplosionStart) continue;
+
+            const age = now - seg.mineExplosionStart;
+            if (age < 0 || age > MINE_CONFIG.explosionDurationMs) continue;
+
+            const dist = Math.abs((i - segmentIndex) * SEGMENT_LENGTH);
+            if (dist >= MINE_CONFIG.explosionGlowDistance) continue;
+
+            const timeFade = 1 - age / MINE_CONFIG.explosionDurationMs;
+            const blastPulse = Math.sin((1 - timeFade) * Math.PI);
+            const distanceFade = 1 - dist / MINE_CONFIG.explosionGlowDistance;
+            explosionGlow += (timeFade * 0.7 + blastPulse * 0.5) * distanceFade * dim;
+        }
+
+        return Math.min(1.8, explosionGlow);
+    }
+
+    renderSegmentPolygons(p1, p2, dim, laserGlow = 0, explosionGlow = 0) {
         // Muted lightness for the base tunnel
         let lightness = p1.seg.colorIndex === 0 ? 15 : 10;
         lightness *= dim;
@@ -181,9 +207,18 @@ export class Renderer {
             this.polygon(p1.tl_x, p1.tl_y, p1.bl_x, p1.bl_y, p2.bl_x, p2.bl_y, p2.tl_x, p2.tl_y, glowColor);
             this.polygon(p1.tr_x, p1.tr_y, p1.br_x, p1.br_y, p2.br_x, p2.br_y, p2.tr_x, p2.tr_y, glowColor);
         }
+
+        if (explosionGlow > 0) {
+            const glowAlpha = Math.min(0.48, explosionGlow * 0.42);
+            const glowColor = `rgba(255, 154, 46, ${glowAlpha})`;
+            this.polygon(p1.tl_x, p1.tl_y, p1.tr_x, p1.tr_y, p2.tr_x, p2.tr_y, p2.tl_x, p2.tl_y, glowColor);
+            this.polygon(p1.bl_x, p1.bl_y, p1.br_x, p1.br_y, p2.br_x, p2.br_y, p2.bl_x, p2.bl_y, glowColor);
+            this.polygon(p1.tl_x, p1.tl_y, p1.bl_x, p1.bl_y, p2.bl_x, p2.bl_y, p2.tl_x, p2.tl_y, glowColor);
+            this.polygon(p1.tr_x, p1.tr_y, p1.br_x, p1.br_y, p2.br_x, p2.br_y, p2.tr_x, p2.tr_y, glowColor);
+        }
     }
 
-    renderSegmentWires(p1, p2, dim, laserGlow = 0) {
+    renderSegmentWires(p1, p2, dim, laserGlow = 0, explosionGlow = 0) {
         // Muted wires: 50% saturation, lower lightness
         this.ctx.strokeStyle = `hsl(${p1.seg.hue}, 50%, ${30 * dim}%)`;
         this.ctx.lineWidth = 1;
@@ -212,6 +247,17 @@ export class Renderer {
             this.ctx.closePath();
             this.ctx.stroke();
         }
+
+        if (explosionGlow > 0) {
+            const glowAlpha = Math.min(0.9, explosionGlow * 0.75);
+            this.ctx.strokeStyle = `rgba(255, 196, 74, ${glowAlpha})`;
+            this.ctx.lineWidth = 2.5;
+            this.ctx.beginPath();
+            this.ctx.moveTo(p1.tl_x, p1.tl_y); this.ctx.lineTo(p1.tr_x, p1.tr_y);
+            this.ctx.lineTo(p1.br_x, p1.br_y); this.ctx.lineTo(p1.bl_x, p1.bl_y);
+            this.ctx.closePath();
+            this.ctx.stroke();
+        }
     }
 
     renderSegmentObstacles(p2, now, dim) {
@@ -225,6 +271,15 @@ export class Renderer {
             const mY = p2.sy + p2.seg.mineY * mScale;
             const mRadius = MINE_CONFIG.radius * mScale;
             this.renderEnergyMine(mX, mY, mRadius, now, dim, p2.seg.index);
+        } else if (p2.seg.type === 'mine' && p2.seg.mineExplosionStart) {
+            const age = now - p2.seg.mineExplosionStart;
+            if (age >= 0 && age <= MINE_CONFIG.explosionDurationMs) {
+                const mScale = p2.scale;
+                const mX = p2.sx + p2.seg.mineX * mScale;
+                const mY = p2.sy + p2.seg.mineY * mScale;
+                const mRadius = MINE_CONFIG.radius * mScale;
+                this.renderMineExplosion(mX, mY, mRadius, age, dim, p2.seg.index);
+            }
         }
     }
 
@@ -292,6 +347,67 @@ export class Renderer {
         ctx.shadowColor = '#6fffff';
         ctx.beginPath();
         ctx.arc(x, y, coreRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+    }
+
+    renderMineExplosion(x, y, radius, age, dim, seed = 0) {
+        if (radius <= 0.5 || dim <= 0) return;
+
+        const ctx = this.ctx;
+        const progress = Math.min(1, age / MINE_CONFIG.explosionDurationMs);
+        const fade = 1 - progress;
+        const blastRadius = radius * MINE_CONFIG.explosionScale;
+        const shockRadius = blastRadius * (1.0 + progress * 5.4);
+        const coreRadius = blastRadius * (1.25 + Math.sin(progress * Math.PI) * 1.1);
+        const alpha = Math.min(1, dim * 1.35) * fade;
+
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+
+        const flash = ctx.createRadialGradient(x, y, radius * 0.1, x, y, shockRadius);
+        flash.addColorStop(0, `rgba(255, 255, 255, ${0.98 * alpha})`);
+        flash.addColorStop(0.16, `rgba(255, 228, 126, ${0.82 * alpha})`);
+        flash.addColorStop(0.42, `rgba(255, 98, 35, ${0.36 * alpha})`);
+        flash.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = flash;
+        ctx.beginPath();
+        ctx.arc(x, y, shockRadius, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = `rgba(255, 235, 170, ${0.86 * alpha})`;
+        ctx.lineWidth = Math.max(1, radius * (0.14 + fade * 0.18));
+        ctx.beginPath();
+        ctx.arc(x, y, shockRadius * (0.62 + progress * 0.22), 0, Math.PI * 2);
+        ctx.stroke();
+
+        const shards = 16;
+        ctx.lineCap = 'round';
+        for (let i = 0; i < shards; i++) {
+            const angle = (i / shards) * Math.PI * 2 + seed * 0.37;
+            const jitter = Math.sin(seed * 13.1 + i * 2.17) * 0.26;
+            const rayLength = blastRadius * (1.25 + progress * (3.4 + jitter));
+            const inner = coreRadius * (0.35 + progress * 0.2);
+            const sx = x + Math.cos(angle) * inner;
+            const sy = y + Math.sin(angle) * inner;
+            const ex = x + Math.cos(angle) * rayLength;
+            const ey = y + Math.sin(angle) * rayLength;
+            ctx.strokeStyle = i % 3 === 0
+                ? `rgba(112, 248, 255, ${0.7 * alpha})`
+                : `rgba(255, 146, 42, ${0.82 * alpha})`;
+            ctx.lineWidth = Math.max(1, radius * (0.04 + fade * 0.06));
+            ctx.beginPath();
+            ctx.moveTo(sx, sy);
+            ctx.lineTo(ex, ey);
+            ctx.stroke();
+        }
+
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.9 * alpha})`;
+        ctx.shadowBlur = radius * (2.4 + fade * 2.2);
+        ctx.shadowColor = '#ffb22e';
+        ctx.beginPath();
+        ctx.arc(x, y, coreRadius * fade, 0, Math.PI * 2);
         ctx.fill();
 
         ctx.restore();

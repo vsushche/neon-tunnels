@@ -181,6 +181,7 @@ export class GameEngine {
                         const dy = p.y - seg.mineY;
                         if (Math.sqrt(dx * dx + dy * dy) <= MINE_CONFIG.laserHitRadius) {
                             seg.mineDestroyed = true;
+                            seg.mineExplosionStart = now;
                             events.push(gameEvent(GameEventType.MINE_DESTROYED, { segmentIndex: segIdx }));
                             return false; // Laser detonates the mine
                         }

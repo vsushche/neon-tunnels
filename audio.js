@@ -71,21 +71,75 @@ export class AudioManager {
     playMineDestroyedSound() {
         if (!this.audioCtx) return;
         const now = this.audioCtx.currentTime;
-        const osc = this.audioCtx.createOscillator();
-        const gain = this.audioCtx.createGain();
+        const master = this.audioCtx.createGain();
+        master.gain.setValueAtTime(0.7, now);
+        master.gain.exponentialRampToValueAtTime(0.001, now + 0.42);
+        master.connect(this.audioCtx.destination);
 
-        osc.type = 'square';
-        osc.frequency.setValueAtTime(900, now);
-        osc.frequency.exponentialRampToValueAtTime(180, now + 0.22);
+        const boom = this.audioCtx.createOscillator();
+        const boomGain = this.audioCtx.createGain();
+        boom.type = 'sine';
+        boom.frequency.setValueAtTime(95, now);
+        boom.frequency.exponentialRampToValueAtTime(34, now + 0.36);
+        boomGain.gain.setValueAtTime(1.0, now);
+        boomGain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+        boom.connect(boomGain);
+        boomGain.connect(master);
+        boom.start(now);
+        boom.stop(now + 0.42);
 
-        gain.gain.setValueAtTime(0.28, now);
-        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+        const crack = this.audioCtx.createOscillator();
+        const crackGain = this.audioCtx.createGain();
+        crack.type = 'sawtooth';
+        crack.frequency.setValueAtTime(70, now);
+        crack.frequency.exponentialRampToValueAtTime(18, now + 0.16);
+        crackGain.gain.setValueAtTime(0.55, now);
+        crackGain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
+        crack.connect(crackGain);
+        crackGain.connect(master);
+        crack.start(now);
+        crack.stop(now + 0.18);
 
-        osc.connect(gain);
-        gain.connect(this.audioCtx.destination);
+        const noise = this.createNoiseSource(0.22);
+        const noiseFilter = this.audioCtx.createBiquadFilter();
+        const noiseGain = this.audioCtx.createGain();
+        noiseFilter.type = 'lowpass';
+        noiseFilter.frequency.setValueAtTime(3600, now);
+        noiseFilter.frequency.exponentialRampToValueAtTime(260, now + 0.22);
+        noiseFilter.Q.setValueAtTime(0.8, now);
+        noiseGain.gain.setValueAtTime(0.75, now);
+        noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+        noise.connect(noiseFilter);
+        noiseFilter.connect(noiseGain);
+        noiseGain.connect(master);
+        noise.start(now);
+        noise.stop(now + 0.24);
 
-        osc.start(now);
-        osc.stop(now + 0.22);
+        const snap = this.audioCtx.createOscillator();
+        const snapGain = this.audioCtx.createGain();
+        snap.type = 'triangle';
+        snap.frequency.setValueAtTime(160, now);
+        snap.frequency.exponentialRampToValueAtTime(45, now + 0.08);
+        snapGain.gain.setValueAtTime(0.9, now);
+        snapGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
+        snap.connect(snapGain);
+        snapGain.connect(master);
+        snap.start(now);
+        snap.stop(now + 0.1);
+    }
+
+    createNoiseSource(duration) {
+        const sampleRate = this.audioCtx.sampleRate;
+        const buffer = this.audioCtx.createBuffer(1, Math.ceil(sampleRate * duration), sampleRate);
+        const data = buffer.getChannelData(0);
+
+        for (let i = 0; i < data.length; i++) {
+            data[i] = Math.random() * 2 - 1;
+        }
+
+        const source = this.audioCtx.createBufferSource();
+        source.buffer = buffer;
+        return source;
     }
 
     playCrashSound() {

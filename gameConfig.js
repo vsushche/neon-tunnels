@@ -25,7 +25,10 @@ export const GAME_CONFIG = Object.freeze({
     },
     mines: {
         radius: 50,
-        laserHitRadius: 70
+        laserHitRadius: 70,
+        explosionDurationMs: 220,
+        explosionGlowDistance: 3600,
+        explosionScale: 1.5
     },
     laser: {
         lifetimeMs: 500,
