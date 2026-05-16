@@ -58,7 +58,10 @@ export const GAME_CONFIG = Object.freeze({
         starCount: 400,
         starSpread: 4000,
         starDepth: 4000,
-        laserGlowDistance: 2000
+        laserGlowDistance: 2000,
+        reticleRadius: 10,
+        reticleLineLength: 7,
+        reticleGap: 5
     },
     countdown: {
         duration: 3,
