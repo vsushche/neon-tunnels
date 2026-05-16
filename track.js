@@ -30,6 +30,8 @@ export async function createTrack(level) {
             doorSpeed: obstacle?.speed || 1,
             mineX: obstacle?.type === 'mine' ? obstacle.x || 0 : 0,
             mineY: obstacle?.type === 'mine' ? obstacle.y || 0 : 0,
+            mineDestroyed: false,
+            mineExplosionStart: 0,
             door,
             hue: colorIndex === 0 ? levelData.theme.hue1 : levelData.theme.hue2,
             passed: false
