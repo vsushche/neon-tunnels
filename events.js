@@ -5,6 +5,7 @@ export const GameEventType = Object.freeze({
     COUNTDOWN_FINISHED: 'countdownFinished',
     LASER_FIRED: 'laserFired',
     LASER_HIT_DOOR: 'laserHitDoor',
+    MINE_DESTROYED: 'mineDestroyed',
     SHIP_CRASHED: 'shipCrashed',
     WALL_SCRAPED: 'wallScraped',
     DOOR_PASSED: 'doorPassed',

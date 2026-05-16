@@ -37,6 +37,10 @@ export class AudioManager {
                     this.playCrashSound();
                     break;
 
+                case GameEventType.MINE_DESTROYED:
+                    this.playMineDestroyedSound();
+                    break;
+
                 case GameEventType.WALL_SCRAPED:
                     this.playScrapeSound();
                     break;
@@ -61,6 +65,27 @@ export class AudioManager {
         }
 
         this.updateEngineSound(state.speed, state.MAX_SPEED);
+    }
+
+
+    playMineDestroyedSound() {
+        if (!this.audioCtx) return;
+        const now = this.audioCtx.currentTime;
+        const osc = this.audioCtx.createOscillator();
+        const gain = this.audioCtx.createGain();
+
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(900, now);
+        osc.frequency.exponentialRampToValueAtTime(180, now + 0.22);
+
+        gain.gain.setValueAtTime(0.28, now);
+        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
+
+        osc.connect(gain);
+        gain.connect(this.audioCtx.destination);
+
+        osc.start(now);
+        osc.stop(now + 0.22);
     }
 
     playCrashSound() {

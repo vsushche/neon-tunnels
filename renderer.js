@@ -2,7 +2,7 @@ import { GAME_CONFIG } from './gameConfig.js';
 import { Starfield } from './stars.js';
 import { EngineStatus } from './engine.js';
 
-const { tunnel: TUNNEL_CONFIG, laser: LASER_CONFIG, render: RENDER_CONFIG } = GAME_CONFIG;
+const { tunnel: TUNNEL_CONFIG, mines: MINE_CONFIG, laser: LASER_CONFIG, render: RENDER_CONFIG } = GAME_CONFIG;
 const SEGMENT_LENGTH = TUNNEL_CONFIG.segmentLength;
 const TUNNEL_WIDTH = TUNNEL_CONFIG.width;
 const TUNNEL_HEIGHT = TUNNEL_CONFIG.height;
@@ -219,11 +219,11 @@ export class Renderer {
             p2.seg.door.render(this.ctx, p2.sx, p2.sy, p2.w, p2.h, now, dim);
         }
         
-        if (p2.seg.type === 'mine') {
+        if (p2.seg.type === 'mine' && !p2.seg.mineDestroyed) {
             const mScale = p2.scale;
             const mX = p2.sx + p2.seg.mineX * mScale;
             const mY = p2.sy + p2.seg.mineY * mScale;
-            const mRadius = 50 * mScale;
+            const mRadius = MINE_CONFIG.radius * mScale;
             this.renderEnergyMine(mX, mY, mRadius, now, dim, p2.seg.index);
         }
     }
