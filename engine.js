@@ -6,6 +6,7 @@ const {
     levels: LEVEL_CONFIG,
     tunnel: TUNNEL_CONFIG,
     ship: SHIP_CONFIG,
+    mines: MINE_CONFIG,
     laser: LASER_CONFIG,
     track: TRACK_CONFIG,
     autopilot: AUTOPILOT_CONFIG,
@@ -164,33 +165,46 @@ export class GameEngine {
                     Math.floor(Math.max(previousHeadZ, headZ) / SEGMENT_LENGTH)
                 );
 
-                // Sweep across every segment crossed this frame so fast laser bolts cannot skip thin doors.
+                // Sweep across every segment crossed this frame so fast laser bolts cannot skip thin obstacles.
                 for (let segIdx = startSegIdx; segIdx <= endSegIdx; segIdx++) {
                     const seg = state.track[segIdx];
-                    if (!seg || !seg.door) continue;
+                    if (!seg) continue;
 
-                    const currentW = (TUNNEL_WIDTH * seg.widthFactor) / 2;
-                    const currentH = (TUNNEL_HEIGHT * seg.heightFactor) / 2;
+                    if (seg.door) {
+                        const currentW = (TUNNEL_WIDTH * seg.widthFactor) / 2;
+                        const currentH = (TUNNEL_HEIGHT * seg.heightFactor) / 2;
 
-                    if (
-                        seg.door.checkLaserHit(
-                            p.x,
-                            p.y,
-                            LASER_CONFIG.hitSize,
-                            LASER_CONFIG.hitSize,
-                            currentW,
-                            currentH,
-                            now
-                        )
-                    ) {
-                        const distToDoor = seg.door.doorZ - state.cameraZ;
-                        if (distToDoor < LASER_CONFIG.triggerDistance) {
-                            seg.door.onHit(now);
-                        } else {
-                            seg.door.lastHitTime = now;
+                        if (
+                            seg.door.checkLaserHit(
+                                p.x,
+                                p.y,
+                                LASER_CONFIG.hitSize,
+                                LASER_CONFIG.hitSize,
+                                currentW,
+                                currentH,
+                                now
+                            )
+                        ) {
+                            const distToDoor = seg.door.doorZ - state.cameraZ;
+                            if (distToDoor < LASER_CONFIG.triggerDistance) {
+                                seg.door.onHit(now);
+                            } else {
+                                seg.door.lastHitTime = now;
+                            }
+                            events.push(gameEvent(GameEventType.LASER_HIT_DOOR, { segmentIndex: segIdx }));
+                            return false; // Laser absorbed by door
                         }
-                        events.push(gameEvent(GameEventType.LASER_HIT_DOOR, { segmentIndex: segIdx }));
-                        return false; // Laser absorbed by door
+                    }
+
+                    if (seg.type === 'mine' && !seg.mineDestroyed) {
+                        const dx = p.x - seg.mineX;
+                        const dy = p.y - seg.mineY;
+                        if (Math.sqrt(dx * dx + dy * dy) <= MINE_CONFIG.laserHitRadius) {
+                            seg.mineDestroyed = true;
+                            seg.mineExplosionStart = now;
+                            events.push(gameEvent(GameEventType.MINE_DESTROYED, { segmentIndex: segIdx }));
+                            return false; // Laser detonates the mine
+                        }
                     }
                 }
 
@@ -275,10 +289,10 @@ export class GameEngine {
                         } else if (result === 'passed') {
                             events.push(gameEvent(GameEventType.DOOR_PASSED, { segmentIndex: currentSegIndex }));
                         }
-                    } else if (currentSeg.type === 'mine') {
+                    } else if (currentSeg.type === 'mine' && !currentSeg.mineDestroyed) {
                         let dx = state.shipX - currentSeg.mineX;
                         let dy = state.shipY - currentSeg.mineY;
-                        if (Math.sqrt(dx * dx + dy * dy) < SHIP_WIDTH / 2 + 50) {
+                        if (Math.sqrt(dx * dx + dy * dy) < SHIP_WIDTH / 2 + MINE_CONFIG.radius) {
                             this.handleCrash(events);
                         }
                     }

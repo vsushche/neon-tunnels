@@ -67,7 +67,6 @@ export class AudioManager {
         this.updateEngineSound(state.speed, state.MAX_SPEED);
     }
 
-
     playMineDestroyedSound() {
         if (!this.audioCtx) return;
         const now = this.audioCtx.currentTime;
