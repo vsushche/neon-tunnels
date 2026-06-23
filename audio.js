@@ -359,48 +359,155 @@ export class AudioManager {
 
     startMenuMusic() {
         if (!this.audioCtx) return;
-        if (this.menuInterval) return;
+        if (this.menuMusicPlaying) return;
+        this.menuMusicPlaying = true;
 
-        const notes = [130.81, 261.63, 196.0, 261.63, 146.83, 293.66, 220.0, 293.66]; // C3, C4, G3, C4, D3, D4, A3, D4
+        this.menuMasterGain = this.audioCtx.createGain();
+        this.menuMasterGain.connect(this.audioCtx.destination);
 
-        let step = 0;
-        const tempo = 140; // BPM
-        const stepTime = 60 / tempo / 2; // 1/8 notes
+        // "Ride of the Valkyries" (Walkürenritt) — Wagner, in B minor.
+        // The recognizable feature is the dotted "galloping" rhythm
+        // (dotted-eighth + sixteenth + dotted-quarter: "da-da-DUMMM-dum")
+        // applied to rising B-minor / D-major triad arpeggios.
+        const B2 = 123.47,
+            Fs3 = 185.0,
+            B3 = 246.94,
+            D3 = 146.83,
+            D4 = 293.66,
+            Fs4 = 369.99,
+            A4 = 440.0,
+            B4 = 493.88;
 
-        this.menuInterval = setInterval(() => {
-            const now = this.audioCtx.currentTime;
-            const freq = notes[step % notes.length];
+        // Durations are in sixteenth-note units. Each "statement" is a
+        // galloping cell: [n,3] dotted-8th, [n,1] 16th, [peak,6] dotted-4th, [peak,2] 8th.
+        // Each note: [freq, duration(16ths), volume]
+        const melody = [
+            // Statement 1 — tonic (B minor): da-da-DUMMM-dum
+            [B3, 3, 0.6],
+            [D4, 1, 0.7],
+            [Fs4, 6, 1.0],
+            [Fs4, 2, 0.85],
+            // Statement 2 — repeat
+            [B3, 3, 0.6],
+            [D4, 1, 0.7],
+            [Fs4, 6, 1.0],
+            [Fs4, 2, 0.85],
+            // Statement 3 — sequence up a third
+            [D4, 3, 0.6],
+            [Fs4, 1, 0.7],
+            [A4, 6, 1.0],
+            [A4, 2, 0.85],
+            // Statement 4 — repeat
+            [D4, 3, 0.6],
+            [Fs4, 1, 0.7],
+            [A4, 6, 1.0],
+            [A4, 2, 0.85],
+            // Statement 5 — climax, up to the high B
+            [Fs4, 3, 0.65],
+            [A4, 1, 0.75],
+            [B4, 6, 1.0],
+            [B4, 2, 0.9],
+            // Statement 6 — repeat climax
+            [Fs4, 3, 0.65],
+            [A4, 1, 0.75],
+            [B4, 6, 1.0],
+            [B4, 2, 0.9],
+            // Descending resolution back to the tonic
+            [B4, 3, 0.8],
+            [A4, 1, 0.7],
+            [Fs4, 6, 0.95],
+            [D4, 2, 0.7],
+            [Fs4, 3, 0.7],
+            [D4, 1, 0.7],
+            [B3, 8, 1.0],
+            [0, 4, 0] // breath before the loop
+        ];
 
-            const osc = this.audioCtx.createOscillator();
-            const gain = this.audioCtx.createGain();
-            const filter = this.audioCtx.createBiquadFilter();
+        // Bass — root note under each statement, sustained
+        const bass = [
+            [B2, 12],
+            [B2, 12],
+            [D3, 12],
+            [D3, 12],
+            [Fs3, 12],
+            [Fs3, 12],
+            [B2, 12], // under the descent
+            [Fs3, 8],
+            [B2, 8] // under the resolution
+        ];
 
-            osc.type = 'sawtooth';
-            osc.frequency.setValueAtTime(freq, now);
+        const quarterBpm = 92;
+        const sixteenth = 60 / quarterBpm / 4;
 
-            filter.type = 'lowpass';
-            filter.frequency.setValueAtTime(2000, now);
-            filter.frequency.exponentialRampToValueAtTime(200, now + stepTime);
+        const scheduleLoop = () => {
+            if (!this.menuMusicPlaying) return;
+            const startTime = this.audioCtx.currentTime + 0.05;
 
-            gain.gain.setValueAtTime(0, now);
-            gain.gain.linearRampToValueAtTime(0.08, now + 0.01);
-            gain.gain.exponentialRampToValueAtTime(0.001, now + stepTime * 0.9);
+            // Schedule melody (brass-like sawtooth + soft octave doubling)
+            let t = startTime;
+            for (const [freq, dur, vol] of melody) {
+                const noteDur = dur * sixteenth;
+                if (freq > 0) {
+                    this.playMenuNote(freq, t, noteDur * 0.9, vol * 0.09, 'sawtooth', 2800);
+                    this.playMenuNote(freq * 2, t, noteDur * 0.75, vol * 0.025, 'triangle', 2000);
+                }
+                t += noteDur;
+            }
+            const loopDuration = t - startTime;
 
-            osc.connect(filter);
-            filter.connect(gain);
-            gain.connect(this.audioCtx.destination);
+            // Schedule bass
+            let tb = startTime;
+            for (const [freq, dur] of bass) {
+                const noteDur = dur * sixteenth;
+                if (freq > 0) {
+                    this.playMenuNote(freq, tb, noteDur * 0.92, 0.075, 'square', 500);
+                }
+                tb += noteDur;
+            }
 
-            osc.start(now);
-            osc.stop(now + stepTime);
+            this.menuMusicTimeout = setTimeout(scheduleLoop, (loopDuration - 0.1) * 1000);
+        };
 
-            step++;
-        }, stepTime * 1000);
+        scheduleLoop();
+    }
+
+    playMenuNote(freq, time, duration, volume, type, filterFreq) {
+        const ctx = this.audioCtx;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        const filter = ctx.createBiquadFilter();
+
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, time);
+
+        filter.type = 'lowpass';
+        filter.frequency.setValueAtTime(filterFreq, time);
+        filter.frequency.exponentialRampToValueAtTime(Math.max(20, filterFreq * 0.15), time + duration);
+
+        gain.gain.setValueAtTime(0, time);
+        gain.gain.linearRampToValueAtTime(volume, time + 0.015);
+        gain.gain.setValueAtTime(volume * 0.8, time + duration * 0.6);
+        gain.gain.exponentialRampToValueAtTime(0.001, time + duration);
+
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(this.menuMasterGain || ctx.destination);
+
+        osc.start(time);
+        osc.stop(time + duration + 0.01);
     }
 
     stopMenuMusic() {
-        if (this.menuInterval) {
-            clearInterval(this.menuInterval);
-            this.menuInterval = null;
+        this.menuMusicPlaying = false;
+        if (this.menuMusicTimeout) {
+            clearTimeout(this.menuMusicTimeout);
+            this.menuMusicTimeout = null;
+        }
+        if (this.menuMasterGain) {
+            this.menuMasterGain.gain.cancelScheduledValues(this.audioCtx.currentTime);
+            this.menuMasterGain.gain.setValueAtTime(this.menuMasterGain.gain.value, this.audioCtx.currentTime);
+            this.menuMasterGain.gain.linearRampToValueAtTime(0, this.audioCtx.currentTime + 0.15);
+            this.menuMasterGain = null;
         }
     }
 }
