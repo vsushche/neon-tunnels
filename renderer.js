@@ -49,47 +49,57 @@ export class Renderer {
 
         this.renderStars(state, baseIndex);
         this.renderTunnel(state, now, baseIndex);
-        this.renderReticle(state);
+        this.renderReticle(state, now);
 
         if (state.gameState === EngineStatus.COUNTDOWN) {
             this.renderCountdown(state);
         }
     }
 
-    renderReticle(state) {
+    renderReticle(state, now) {
         if (state.gameState !== EngineStatus.PLAYING && state.gameState !== EngineStatus.EXITING) return;
 
         const ctx = this.ctx;
         const x = this.width / 2;
         const y = this.height / 2;
-        const radius = RENDER_CONFIG.reticleRadius;
-        const lineLength = RENDER_CONFIG.reticleLineLength;
-        const gap = RENDER_CONFIG.reticleGap;
+        const time = now * 0.001;
+        const pulse = 0.85 + Math.sin(time * 3) * 0.15;
+        const rotation = time * 0.4 + Math.PI / 4;
 
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
-        ctx.strokeStyle = 'rgba(0, 255, 204, 0.82)';
-        ctx.lineWidth = 1.5;
-        ctx.shadowBlur = 8;
+
+        // Outer rotating arcs
+        ctx.strokeStyle = `rgba(0, 255, 204, ${0.35 * pulse})`;
+        ctx.lineWidth = 1;
+        ctx.shadowBlur = 6;
         ctx.shadowColor = '#00ffcc';
+        for (let i = 0; i < 4; i++) {
+            const angle = rotation + (i * Math.PI) / 2;
+            ctx.beginPath();
+            ctx.arc(x, y, 18, angle, angle + 0.9);
+            ctx.stroke();
+        }
 
+        // Diagonal tick marks
+        ctx.strokeStyle = `rgba(0, 255, 204, ${0.3 * pulse})`;
+        ctx.lineWidth = 0.8;
+        const dInner = 13;
+        const dOuter = 17;
+        const diag = Math.SQRT1_2;
         ctx.beginPath();
-        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        for (let sx = -1; sx <= 1; sx += 2) {
+            for (let sy = -1; sy <= 1; sy += 2) {
+                ctx.moveTo(x + diag * dInner * sx, y + diag * dInner * sy);
+                ctx.lineTo(x + diag * dOuter * sx, y + diag * dOuter * sy);
+            }
+        }
         ctx.stroke();
 
-        ctx.beginPath();
-        ctx.moveTo(x - radius - gap - lineLength, y);
-        ctx.lineTo(x - radius - gap, y);
-        ctx.moveTo(x + radius + gap, y);
-        ctx.lineTo(x + radius + gap + lineLength, y);
-        ctx.moveTo(x, y - radius - gap - lineLength);
-        ctx.lineTo(x, y - radius - gap);
-        ctx.moveTo(x, y + radius + gap);
-        ctx.lineTo(x, y + radius + gap + lineLength);
-        ctx.stroke();
-
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
-        ctx.shadowBlur = 4;
+        // Center dot
+        ctx.fillStyle = `rgba(255, 255, 255, ${0.85 * pulse})`;
+        ctx.shadowBlur = 6;
+        ctx.shadowColor = '#ffffff';
         ctx.beginPath();
         ctx.arc(x, y, 1.5, 0, Math.PI * 2);
         ctx.fill();
@@ -412,55 +422,91 @@ export class Renderer {
         const ctx = this.ctx;
         const progress = Math.min(1, age / MINE_CONFIG.explosionDurationMs);
         const fade = 1 - progress;
-        const blastRadius = radius * MINE_CONFIG.explosionScale;
-        const shockRadius = blastRadius * (1.0 + progress * 5.4);
-        const coreRadius = blastRadius * (1.25 + Math.sin(progress * Math.PI) * 1.1);
-        const alpha = Math.min(1, dim * 1.35) * fade;
+        const blastRadius = radius * MINE_CONFIG.explosionScale * 2.5;
+        const shockRadius = blastRadius * (1.0 + progress * 8);
+        const coreRadius = blastRadius * (1.5 + Math.sin(progress * Math.PI) * 1.8);
+        const alpha = Math.min(1, dim * 1.5) * fade;
 
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
 
-        const flash = ctx.createRadialGradient(x, y, radius * 0.1, x, y, shockRadius);
-        flash.addColorStop(0, `rgba(255, 255, 255, ${0.98 * alpha})`);
-        flash.addColorStop(0.16, `rgba(255, 228, 126, ${0.82 * alpha})`);
-        flash.addColorStop(0.42, `rgba(255, 98, 35, ${0.36 * alpha})`);
+        // Outer white-hot flash
+        const flash = ctx.createRadialGradient(x, y, radius * 0.05, x, y, shockRadius);
+        flash.addColorStop(0, `rgba(255, 255, 255, ${1.0 * alpha})`);
+        flash.addColorStop(0.1, `rgba(255, 255, 200, ${0.95 * alpha})`);
+        flash.addColorStop(0.25, `rgba(255, 200, 60, ${0.8 * alpha})`);
+        flash.addColorStop(0.45, `rgba(255, 100, 20, ${0.5 * alpha})`);
+        flash.addColorStop(0.7, `rgba(200, 30, 0, ${0.2 * alpha})`);
         flash.addColorStop(1, 'rgba(0, 0, 0, 0)');
         ctx.fillStyle = flash;
         ctx.beginPath();
         ctx.arc(x, y, shockRadius, 0, Math.PI * 2);
         ctx.fill();
 
-        ctx.strokeStyle = `rgba(255, 235, 170, ${0.86 * alpha})`;
-        ctx.lineWidth = Math.max(1, radius * (0.14 + fade * 0.18));
+        // Inner fireball
+        const fireball = ctx.createRadialGradient(x, y, 0, x, y, coreRadius * 1.4);
+        fireball.addColorStop(0, `rgba(255, 255, 255, ${1.0 * alpha})`);
+        fireball.addColorStop(0.2, `rgba(255, 230, 80, ${0.9 * alpha})`);
+        fireball.addColorStop(0.5, `rgba(255, 120, 10, ${0.7 * alpha})`);
+        fireball.addColorStop(0.8, `rgba(180, 40, 0, ${0.3 * alpha})`);
+        fireball.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = fireball;
         ctx.beginPath();
-        ctx.arc(x, y, shockRadius * (0.62 + progress * 0.22), 0, Math.PI * 2);
-        ctx.stroke();
+        ctx.arc(x, y, coreRadius * 1.4, 0, Math.PI * 2);
+        ctx.fill();
 
-        const shards = 16;
+        // Shockwave ring
+        const ringProgress = Math.min(1, progress * 1.5);
+        const ringAlpha = (1 - ringProgress) * alpha;
+        ctx.strokeStyle = `rgba(255, 240, 180, ${0.9 * ringAlpha})`;
+        ctx.lineWidth = Math.max(1.5, radius * (0.2 + fade * 0.25));
+        ctx.shadowBlur = radius * 2;
+        ctx.shadowColor = '#ff8800';
+        ctx.beginPath();
+        ctx.arc(x, y, shockRadius * (0.5 + ringProgress * 0.5), 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+
+        // Fire shards — more, longer, thicker
+        const shards = 28;
         ctx.lineCap = 'round';
         for (let i = 0; i < shards; i++) {
             const angle = (i / shards) * Math.PI * 2 + seed * 0.37;
-            const jitter = Math.sin(seed * 13.1 + i * 2.17) * 0.26;
-            const rayLength = blastRadius * (1.25 + progress * (3.4 + jitter));
-            const inner = coreRadius * (0.35 + progress * 0.2);
+            const jitter = Math.sin(seed * 13.1 + i * 2.17) * 0.35;
+            const rayLength = blastRadius * (1.5 + progress * (5.0 + jitter));
+            const inner = coreRadius * (0.2 + progress * 0.15);
             const sx = x + Math.cos(angle) * inner;
             const sy = y + Math.sin(angle) * inner;
             const ex = x + Math.cos(angle) * rayLength;
             const ey = y + Math.sin(angle) * rayLength;
-            ctx.strokeStyle =
-                i % 3 === 0 ? `rgba(112, 248, 255, ${0.7 * alpha})` : `rgba(255, 146, 42, ${0.82 * alpha})`;
-            ctx.lineWidth = Math.max(1, radius * (0.04 + fade * 0.06));
+            if (i % 4 === 0) {
+                ctx.strokeStyle = `rgba(255, 255, 200, ${0.9 * alpha})`;
+            } else if (i % 3 === 0) {
+                ctx.strokeStyle = `rgba(255, 200, 50, ${0.85 * alpha})`;
+            } else {
+                ctx.strokeStyle = `rgba(255, 120, 20, ${0.8 * alpha})`;
+            }
+            ctx.lineWidth = Math.max(1.5, radius * (0.07 + fade * 0.09));
             ctx.beginPath();
             ctx.moveTo(sx, sy);
             ctx.lineTo(ex, ey);
             ctx.stroke();
         }
 
-        ctx.fillStyle = `rgba(255, 255, 255, ${0.9 * alpha})`;
-        ctx.shadowBlur = radius * (2.4 + fade * 2.2);
-        ctx.shadowColor = '#ffb22e';
+        // Bright white-hot core
+        ctx.fillStyle = `rgba(255, 255, 255, ${1.0 * alpha})`;
+        ctx.shadowBlur = radius * (4 + fade * 4);
+        ctx.shadowColor = '#ffaa00';
         ctx.beginPath();
-        ctx.arc(x, y, coreRadius * fade, 0, Math.PI * 2);
+        ctx.arc(x, y, coreRadius * fade * 1.2, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Secondary orange glow on core
+        ctx.fillStyle = `rgba(255, 160, 30, ${0.6 * alpha})`;
+        ctx.shadowBlur = radius * (3 + fade * 3);
+        ctx.shadowColor = '#ff4400';
+        ctx.beginPath();
+        ctx.arc(x, y, coreRadius * fade * 1.8, 0, Math.PI * 2);
         ctx.fill();
 
         ctx.restore();

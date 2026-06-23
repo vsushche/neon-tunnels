@@ -26,9 +26,9 @@ export const GAME_CONFIG = Object.freeze({
     mines: {
         radius: 50,
         laserHitRadius: 70,
-        explosionDurationMs: 220,
-        explosionGlowDistance: 3600,
-        explosionScale: 1.5
+        explosionDurationMs: 450,
+        explosionGlowDistance: 5000,
+        explosionScale: 2.0
     },
     laser: {
         lifetimeMs: 500,
@@ -58,10 +58,7 @@ export const GAME_CONFIG = Object.freeze({
         starCount: 400,
         starSpread: 4000,
         starDepth: 4000,
-        laserGlowDistance: 2000,
-        reticleRadius: 10,
-        reticleLineLength: 7,
-        reticleGap: 5
+        laserGlowDistance: 2000
     },
     countdown: {
         duration: 3,

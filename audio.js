@@ -71,60 +71,102 @@ export class AudioManager {
         if (!this.audioCtx) return;
         const now = this.audioCtx.currentTime;
         const master = this.audioCtx.createGain();
-        master.gain.setValueAtTime(0.7, now);
-        master.gain.exponentialRampToValueAtTime(0.001, now + 0.42);
+        master.gain.setValueAtTime(0.85, now);
+        master.gain.linearRampToValueAtTime(0.6, now + 0.05);
+        master.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
         master.connect(this.audioCtx.destination);
 
+        // Initial transient click — the detonation impact
+        const click = this.audioCtx.createOscillator();
+        const clickGain = this.audioCtx.createGain();
+        click.type = 'square';
+        click.frequency.setValueAtTime(800, now);
+        click.frequency.exponentialRampToValueAtTime(60, now + 0.02);
+        clickGain.gain.setValueAtTime(1.0, now);
+        clickGain.gain.exponentialRampToValueAtTime(0.001, now + 0.03);
+        click.connect(clickGain);
+        clickGain.connect(master);
+        click.start(now);
+        click.stop(now + 0.04);
+
+        // Deep sub-bass boom — the shockwave you feel
         const boom = this.audioCtx.createOscillator();
         const boomGain = this.audioCtx.createGain();
         boom.type = 'sine';
-        boom.frequency.setValueAtTime(95, now);
-        boom.frequency.exponentialRampToValueAtTime(34, now + 0.36);
-        boomGain.gain.setValueAtTime(1.0, now);
-        boomGain.gain.exponentialRampToValueAtTime(0.001, now + 0.38);
+        boom.frequency.setValueAtTime(80, now);
+        boom.frequency.exponentialRampToValueAtTime(22, now + 0.8);
+        boomGain.gain.setValueAtTime(1.0, now + 0.01);
+        boomGain.gain.exponentialRampToValueAtTime(0.001, now + 0.9);
         boom.connect(boomGain);
         boomGain.connect(master);
         boom.start(now);
-        boom.stop(now + 0.42);
+        boom.stop(now + 1.0);
 
-        const crack = this.audioCtx.createOscillator();
-        const crackGain = this.audioCtx.createGain();
-        crack.type = 'sawtooth';
-        crack.frequency.setValueAtTime(70, now);
-        crack.frequency.exponentialRampToValueAtTime(18, now + 0.16);
-        crackGain.gain.setValueAtTime(0.55, now);
-        crackGain.gain.exponentialRampToValueAtTime(0.001, now + 0.16);
-        crack.connect(crackGain);
-        crackGain.connect(master);
-        crack.start(now);
-        crack.stop(now + 0.18);
+        // Distorted mid-range crunch
+        const crunch = this.audioCtx.createOscillator();
+        const crunchGain = this.audioCtx.createGain();
+        const crunchDist = this.audioCtx.createWaveShaperFunction
+            ? null
+            : this.audioCtx.createWaveShaper();
+        crunch.type = 'sawtooth';
+        crunch.frequency.setValueAtTime(120, now);
+        crunch.frequency.exponentialRampToValueAtTime(30, now + 0.4);
+        crunchGain.gain.setValueAtTime(0.7, now);
+        crunchGain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+        crunch.connect(crunchGain);
+        crunchGain.connect(master);
+        crunch.start(now);
+        crunch.stop(now + 0.5);
 
-        const noise = this.createNoiseSource(0.22);
-        const noiseFilter = this.audioCtx.createBiquadFilter();
-        const noiseGain = this.audioCtx.createGain();
-        noiseFilter.type = 'lowpass';
-        noiseFilter.frequency.setValueAtTime(3600, now);
-        noiseFilter.frequency.exponentialRampToValueAtTime(260, now + 0.22);
-        noiseFilter.Q.setValueAtTime(0.8, now);
-        noiseGain.gain.setValueAtTime(0.75, now);
-        noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.22);
-        noise.connect(noiseFilter);
-        noiseFilter.connect(noiseGain);
-        noiseGain.connect(master);
-        noise.start(now);
-        noise.stop(now + 0.24);
+        // Filtered noise burst — debris and shrapnel
+        const noise1 = this.createNoiseSource(0.6);
+        const noiseBP = this.audioCtx.createBiquadFilter();
+        const noiseLP = this.audioCtx.createBiquadFilter();
+        const noiseGain1 = this.audioCtx.createGain();
+        noiseBP.type = 'bandpass';
+        noiseBP.frequency.setValueAtTime(2000, now);
+        noiseBP.frequency.exponentialRampToValueAtTime(400, now + 0.5);
+        noiseBP.Q.setValueAtTime(1.2, now);
+        noiseLP.type = 'lowpass';
+        noiseLP.frequency.setValueAtTime(6000, now);
+        noiseLP.frequency.exponentialRampToValueAtTime(200, now + 0.6);
+        noiseGain1.gain.setValueAtTime(0.8, now);
+        noiseGain1.gain.exponentialRampToValueAtTime(0.001, now + 0.55);
+        noise1.connect(noiseBP);
+        noiseBP.connect(noiseLP);
+        noiseLP.connect(noiseGain1);
+        noiseGain1.connect(master);
+        noise1.start(now);
+        noise1.stop(now + 0.65);
 
-        const snap = this.audioCtx.createOscillator();
-        const snapGain = this.audioCtx.createGain();
-        snap.type = 'triangle';
-        snap.frequency.setValueAtTime(160, now);
-        snap.frequency.exponentialRampToValueAtTime(45, now + 0.08);
-        snapGain.gain.setValueAtTime(0.9, now);
-        snapGain.gain.exponentialRampToValueAtTime(0.001, now + 0.08);
-        snap.connect(snapGain);
-        snapGain.connect(master);
-        snap.start(now);
-        snap.stop(now + 0.1);
+        // High-frequency hiss tail — fire and heat dissipation
+        const noise2 = this.createNoiseSource(1.0);
+        const hissFilter = this.audioCtx.createBiquadFilter();
+        const hissGain = this.audioCtx.createGain();
+        hissFilter.type = 'highpass';
+        hissFilter.frequency.setValueAtTime(3000, now + 0.05);
+        hissFilter.frequency.exponentialRampToValueAtTime(800, now + 0.9);
+        hissGain.gain.setValueAtTime(0.0, now);
+        hissGain.gain.linearRampToValueAtTime(0.35, now + 0.04);
+        hissGain.gain.exponentialRampToValueAtTime(0.001, now + 1.0);
+        noise2.connect(hissFilter);
+        hissFilter.connect(hissGain);
+        hissGain.connect(master);
+        noise2.start(now);
+        noise2.stop(now + 1.1);
+
+        // Resonant metallic ping — shrapnel ringing
+        const ping = this.audioCtx.createOscillator();
+        const pingGain = this.audioCtx.createGain();
+        ping.type = 'sine';
+        ping.frequency.setValueAtTime(1800, now + 0.02);
+        ping.frequency.exponentialRampToValueAtTime(600, now + 0.3);
+        pingGain.gain.setValueAtTime(0.25, now + 0.02);
+        pingGain.gain.exponentialRampToValueAtTime(0.001, now + 0.35);
+        ping.connect(pingGain);
+        pingGain.connect(master);
+        ping.start(now + 0.02);
+        ping.stop(now + 0.4);
     }
 
     createNoiseSource(duration) {
