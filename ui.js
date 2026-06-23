@@ -41,11 +41,11 @@ export function handleEvents(events, state) {
                 break;
 
             case GameEventType.LEVEL_COMPLETED:
-                showMenu(`MISSION COMPLETE! LEVEL ${event.payload.level} CLEAR.`, "NEXT LEVEL");
+                showMenu(`MISSION COMPLETE! LEVEL ${event.payload.level} CLEAR.`, 'NEXT LEVEL');
                 break;
 
             case GameEventType.GAME_COMPLETED:
-                showMenu("ARMAGEDDON AVERTED. ALL TUNNELS CLEAR.", "RESTART");
+                showMenu('ARMAGEDDON AVERTED. ALL TUNNELS CLEAR.', 'RESTART');
                 break;
 
             default:
@@ -57,7 +57,7 @@ export function handleEvents(events, state) {
 export function showFlash() {
     uiElements.flashOverlay.classList.add('flash');
     setTimeout(() => {
-        if(uiElements.flashOverlay) uiElements.flashOverlay.classList.remove('flash');
+        if (uiElements.flashOverlay) uiElements.flashOverlay.classList.remove('flash');
     }, 50);
 }
 

@@ -55,7 +55,10 @@ function buildObstacleMap(obstacles) {
 }
 
 function findSection(sections, segmentIndex) {
-    return sections.find(section => segmentIndex >= section.from && segmentIndex < section.to) || sections[sections.length - 1];
+    return (
+        sections.find((section) => segmentIndex >= section.from && segmentIndex < section.to) ||
+        sections[sections.length - 1]
+    );
 }
 
 function createDoor(obstacle, segmentIndex) {

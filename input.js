@@ -13,18 +13,18 @@ export class InputHandler {
 
         // Key bindings: keyboard code -> control name
         this.keyBindings = {
-            'Space':         'throttle',
-            'AltLeft':       'brake',
-            'KeyX':          'fire',
-            'ArrowLeft':     'left',
-            'ArrowRight':    'right',
-            'ArrowUp':       'up',
-            'ArrowDown':     'down'
+            Space: 'throttle',
+            AltLeft: 'brake',
+            KeyX: 'fire',
+            ArrowLeft: 'left',
+            ArrowRight: 'right',
+            ArrowUp: 'up',
+            ArrowDown: 'down'
         };
 
         const preventDefaultKeys = ['Space', 'AltLeft', 'KeyX', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'];
 
-        window.addEventListener('keydown', e => {
+        window.addEventListener('keydown', (e) => {
             const control = this.keyBindings[e.code];
             if (control) {
                 this.controls[control] = true;
@@ -34,7 +34,7 @@ export class InputHandler {
             }
         });
 
-        window.addEventListener('keyup', e => {
+        window.addEventListener('keyup', (e) => {
             const control = this.keyBindings[e.code];
             if (control) {
                 this.controls[control] = false;

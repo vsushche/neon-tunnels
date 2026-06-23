@@ -1,9 +1,11 @@
 {
-  "name": "neon-tunnels",
-  "version": "1.0.0",
-  "private": true,
-  "scripts": {
-    "start": "npx -y live-server",
-    "validate:levels": "npx -y ajv-cli validate --spec=draft2020 -s levels/level.schema.json -d \"levels/level-[0-9].json\""
-  }
+    "name": "neon-tunnels",
+    "version": "1.0.0",
+    "private": true,
+    "scripts": {
+        "start": "npx -y live-server",
+        "validate:levels": "npx -y ajv-cli validate --spec=draft2020 -s levels/level.schema.json -d \"levels/level-[0-9].json\"",
+        "format": "npx -y prettier --write .",
+        "format:check": "npx -y prettier --check ."
+    }
 }

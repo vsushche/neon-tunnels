@@ -12,20 +12,20 @@ export class BaseDoor {
         this.phaseOffset = phaseOffset;
         this.passed = false;
         this.hue = 0;
-        
+
         // Activation system
-        this.doorZ = 0;         // set by track generator
+        this.doorZ = 0; // set by track generator
         this.activated = false;
         this.activationTime = 0;
-        
+
         // Hit system
         this.lastHitTime = 0;
         this.hitFlashDuration = 1000; // 1 second red glow
-        
+
         // Cycle timing (in seconds) — can be overridden per door
-        this.closeTime = 1.4;   // time to go from open to fully closed
-        this.pauseTime = 0.1;   // time to stay fully closed
-        this.openTime = 1.4;    // time to open back up
+        this.closeTime = 1.4; // time to go from open to fully closed
+        this.pauseTime = 0.1; // time to stay fully closed
+        this.openTime = 1.4; // time to open back up
     }
 
     /**
@@ -54,17 +54,17 @@ export class BaseDoor {
             // Before activation: door is fully open
             return 0;
         }
-        
+
         // After activation: deterministic close → pause → open cycle (looping)
         let elapsed = (now - this.activationTime) / 1000;
-        
+
         let t1 = this.closeTime;
         let t2 = t1 + this.pauseTime;
         let t3 = t2 + this.openTime;
         let totalCycle = t3 + 0.3; // small gap of "fully open" before next cycle
-        
+
         let phase = elapsed % totalCycle;
-        
+
         if (phase < t1) {
             return phase / t1;
         } else if (phase < t2) {
@@ -84,8 +84,7 @@ export class BaseDoor {
         return false;
     }
 
-    render(ctx, sx, sy, w, h, now, dim) {
-    }
+    render(ctx, sx, sy, w, h, now, dim) {}
 }
 
 export class DoubleDoor extends BaseDoor {
@@ -96,10 +95,10 @@ export class DoubleDoor extends BaseDoor {
 
     checkCollision(shipX, shipY, shipW, shipH, currentW, currentH, now) {
         let ratio = this.getClosedRatio(now);
-        
+
         if (this.orientation === 'vertical') {
             let safeDistanceY = currentH * (1 - ratio);
-            if (Math.abs(shipY) + shipH/2 > safeDistanceY) {
+            if (Math.abs(shipY) + shipH / 2 > safeDistanceY) {
                 return 'crash';
             } else if (!this.passed) {
                 this.passed = true;
@@ -107,7 +106,7 @@ export class DoubleDoor extends BaseDoor {
             }
         } else if (this.orientation === 'horizontal') {
             let safeDistanceX = currentW * (1 - ratio);
-            if (Math.abs(shipX) + shipW/2 > safeDistanceX) {
+            if (Math.abs(shipX) + shipW / 2 > safeDistanceX) {
                 return 'crash';
             } else if (!this.passed) {
                 this.passed = true;
@@ -177,21 +176,21 @@ export class SingleDoor extends BaseDoor {
         let crashed = false;
 
         if (this.origin === 'top') {
-            let doorEdgeY = -currentH + (2 * currentH * ratio);
-            if (shipY - shipH/2 < doorEdgeY) crashed = true;
+            let doorEdgeY = -currentH + 2 * currentH * ratio;
+            if (shipY - shipH / 2 < doorEdgeY) crashed = true;
         } else if (this.origin === 'bottom') {
-            let doorEdgeY = currentH - (2 * currentH * ratio);
-            if (shipY + shipH/2 > doorEdgeY) crashed = true;
+            let doorEdgeY = currentH - 2 * currentH * ratio;
+            if (shipY + shipH / 2 > doorEdgeY) crashed = true;
         } else if (this.origin === 'left') {
-            let doorEdgeX = -currentW + (2 * currentW * ratio);
-            if (shipX - shipW/2 < doorEdgeX) crashed = true;
+            let doorEdgeX = -currentW + 2 * currentW * ratio;
+            if (shipX - shipW / 2 < doorEdgeX) crashed = true;
         } else if (this.origin === 'right') {
-            let doorEdgeX = currentW - (2 * currentW * ratio);
-            if (shipX + shipW/2 > doorEdgeX) crashed = true;
+            let doorEdgeX = currentW - 2 * currentW * ratio;
+            if (shipX + shipW / 2 > doorEdgeX) crashed = true;
         }
 
         if (crashed) return 'crash';
-        
+
         if (!this.passed) {
             this.passed = true;
             return 'passed';
@@ -203,16 +202,16 @@ export class SingleDoor extends BaseDoor {
         let ratio = this.getClosedRatio(now);
 
         if (this.origin === 'top') {
-            let doorEdgeY = -currentH + (2 * currentH * ratio);
+            let doorEdgeY = -currentH + 2 * currentH * ratio;
             return laserY - laserH / 2 < doorEdgeY;
         } else if (this.origin === 'bottom') {
-            let doorEdgeY = currentH - (2 * currentH * ratio);
+            let doorEdgeY = currentH - 2 * currentH * ratio;
             return laserY + laserH / 2 > doorEdgeY;
         } else if (this.origin === 'left') {
-            let doorEdgeX = -currentW + (2 * currentW * ratio);
+            let doorEdgeX = -currentW + 2 * currentW * ratio;
             return laserX - laserW / 2 < doorEdgeX;
         } else if (this.origin === 'right') {
-            let doorEdgeX = currentW - (2 * currentW * ratio);
+            let doorEdgeX = currentW - 2 * currentW * ratio;
             return laserX + laserW / 2 > doorEdgeX;
         }
         return false;
@@ -290,16 +289,14 @@ export class GateDoor extends BaseDoor {
             let gapHalfW = this.getGapHalfSize(currentW, shipW);
             let gapCenterX = gapPos * (currentW - gapHalfW);
 
-            if (shipX + shipW/2 > gapCenterX + gapHalfW ||
-                shipX - shipW/2 < gapCenterX - gapHalfW) {
+            if (shipX + shipW / 2 > gapCenterX + gapHalfW || shipX - shipW / 2 < gapCenterX - gapHalfW) {
                 return 'crash';
             }
         } else {
             let gapHalfH = this.getGapHalfSize(currentH, shipH);
             let gapCenterY = gapPos * (currentH - gapHalfH);
 
-            if (shipY + shipH/2 > gapCenterY + gapHalfH ||
-                shipY - shipH/2 < gapCenterY - gapHalfH) {
+            if (shipY + shipH / 2 > gapCenterY + gapHalfH || shipY - shipH / 2 < gapCenterY - gapHalfH) {
                 return 'crash';
             }
         }
@@ -318,14 +315,12 @@ export class GateDoor extends BaseDoor {
             let gapHalfW = this.getGapHalfSize(currentW, laserW);
             let gapCenterX = gapPos * (currentW - gapHalfW);
 
-            return laserX + laserW / 2 > gapCenterX + gapHalfW ||
-                laserX - laserW / 2 < gapCenterX - gapHalfW;
+            return laserX + laserW / 2 > gapCenterX + gapHalfW || laserX - laserW / 2 < gapCenterX - gapHalfW;
         } else {
             let gapHalfH = this.getGapHalfSize(currentH, laserH);
             let gapCenterY = gapPos * (currentH - gapHalfH);
 
-            return laserY + laserH / 2 > gapCenterY + gapHalfH ||
-                laserY - laserH / 2 < gapCenterY - gapHalfH;
+            return laserY + laserH / 2 > gapCenterY + gapHalfH || laserY - laserH / 2 < gapCenterY - gapHalfH;
         }
     }
 
@@ -360,7 +355,7 @@ export class GateDoor extends BaseDoor {
 
             // Right panel
             let rightStart = sx + gapCenterX + gapHalfW;
-            let rightPanelW = (sx + w) - rightStart;
+            let rightPanelW = sx + w - rightStart;
             if (rightPanelW > 0) {
                 ctx.fillRect(rightStart, sy - h, rightPanelW, h * 2);
                 ctx.strokeRect(rightStart, sy - h, rightPanelW, h * 2);
@@ -378,7 +373,7 @@ export class GateDoor extends BaseDoor {
 
             // Bottom panel
             let bottomStart = sy + gapCenterY + gapHalfH;
-            let bottomPanelH = (sy + h) - bottomStart;
+            let bottomPanelH = sy + h - bottomStart;
             if (bottomPanelH > 0) {
                 ctx.fillRect(sx - w, bottomStart, w * 2, bottomPanelH);
                 ctx.strokeRect(sx - w, bottomStart, w * 2, bottomPanelH);
@@ -409,7 +404,7 @@ export class SensorDoor extends BaseDoor {
 
     getClosedRatio(now) {
         if (!this.activated) return 1.0; // Initially closed
-        
+
         let elapsed = (now - this.activationTime) / 1000;
         // Opens once and stays open (linear transition)
         return Math.max(0, 1.0 - elapsed / this.openTime);
@@ -417,15 +412,15 @@ export class SensorDoor extends BaseDoor {
 
     checkCollision(shipX, shipY, shipW, shipH, currentW, currentH, now) {
         let ratio = this.getClosedRatio(now);
-        
+
         if (this.orientation === 'vertical') {
             let safeDistanceY = currentH * (1 - ratio);
-            if (Math.abs(shipY) + shipH/2 > safeDistanceY) {
+            if (Math.abs(shipY) + shipH / 2 > safeDistanceY) {
                 return 'crash';
             }
         } else {
             let safeDistanceX = currentW * (1 - ratio);
-            if (Math.abs(shipX) + shipW/2 > safeDistanceX) {
+            if (Math.abs(shipX) + shipW / 2 > safeDistanceX) {
                 return 'crash';
             }
         }
@@ -452,7 +447,7 @@ export class SensorDoor extends BaseDoor {
     render(ctx, sx, sy, w, h, now, dim) {
         let ratio = this.getClosedRatio(now);
         let alpha = dim * 0.8;
-        
+
         // Base color
         let hue = this.hue;
         let saturation = 80;
@@ -466,7 +461,7 @@ export class SensorDoor extends BaseDoor {
             saturation = 100;
             lightness += hitFactor * 40;
         }
-        
+
         ctx.fillStyle = `hsla(${hue}, ${saturation}%, ${lightness}%, ${alpha})`;
         ctx.strokeStyle = `rgba(255, 255, 255, ${dim})`;
         ctx.lineWidth = 2;
@@ -488,11 +483,11 @@ export class SensorDoor extends BaseDoor {
             ctx.fillRect(sx + w - doorW, sy - h, doorW, h * 2);
             ctx.strokeRect(sx + w - doorW, sy - h, doorW, h * 2);
         }
-        
+
         // Add a "sensor" glow when activated but still closing
         if (this.activated && ratio > 0) {
             ctx.shadowBlur = 15 * dim;
-            ctx.shadowColor = "white";
+            ctx.shadowColor = 'white';
             ctx.stroke();
             ctx.shadowBlur = 0;
         }

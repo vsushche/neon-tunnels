@@ -12,8 +12,7 @@ const engine = new GameEngine(input);
 window.onclick = () => {
     handleGameEvents([gameEvent(GameEventType.MENU_ACTIVATED)]);
     window.onclick = null;
-}
-
+};
 
 onStartBtnClick(async () => {
     let events;
@@ -40,7 +39,7 @@ function gameLoop(now) {
     const events = engine.update(dt, now);
     handleGameEvents(events);
     renderer.render(engine.state, now);
-    
+
     requestAnimationFrame(gameLoop);
 }
 

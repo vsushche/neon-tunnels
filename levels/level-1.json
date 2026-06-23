@@ -14,11 +14,47 @@
         { "from": 190, "to": 220, "curveX": 0, "curveY": 0, "widthFactor": 1.0, "heightFactor": 1.0 }
     ],
     "obstacles": [
-        { "segment": 45, "type": "door", "doorType": "double", "orientation": "vertical", "hue": 120, "phaseOffset": 0, "speed": 1.1, "transitionTime": 2.4 },
+        {
+            "segment": 45,
+            "type": "door",
+            "doorType": "double",
+            "orientation": "vertical",
+            "hue": 120,
+            "phaseOffset": 0,
+            "speed": 1.1,
+            "transitionTime": 2.4
+        },
         { "segment": 72, "type": "mine", "x": -260, "y": 80 },
-        { "segment": 96, "type": "door", "doorType": "single", "origin": "left", "hue": 190, "phaseOffset": 0.7, "speed": 1.1, "transitionTime": 2.2 },
+        {
+            "segment": 96,
+            "type": "door",
+            "doorType": "single",
+            "origin": "left",
+            "hue": 190,
+            "phaseOffset": 0.7,
+            "speed": 1.1,
+            "transitionTime": 2.2
+        },
         { "segment": 123, "type": "mine", "x": 280, "y": -120 },
-        { "segment": 150, "type": "door", "doorType": "gate", "direction": "horizontal", "hue": 45, "phaseOffset": 1.2, "speed": 1.25, "gapRatio": 0.4 },
-        { "segment": 176, "type": "door", "doorType": "sensor", "orientation": "horizontal", "hue": 280, "phaseOffset": 0, "speed": 1.0, "openTime": 1.2 }
+        {
+            "segment": 150,
+            "type": "door",
+            "doorType": "gate",
+            "direction": "horizontal",
+            "hue": 45,
+            "phaseOffset": 1.2,
+            "speed": 1.25,
+            "gapRatio": 0.4
+        },
+        {
+            "segment": 176,
+            "type": "door",
+            "doorType": "sensor",
+            "orientation": "horizontal",
+            "hue": 280,
+            "phaseOffset": 0,
+            "speed": 1.0,
+            "openTime": 1.2
+        }
     ]
 }

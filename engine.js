@@ -2,7 +2,15 @@ import { GAME_CONFIG } from './gameConfig.js';
 import { GameEventType, gameEvent } from './events.js';
 import { createTrack } from './track.js';
 
-const { levels: LEVEL_CONFIG, tunnel: TUNNEL_CONFIG, ship: SHIP_CONFIG, mines: MINE_CONFIG, laser: LASER_CONFIG, track: TRACK_CONFIG, autopilot: AUTOPILOT_CONFIG, countdown: COUNTDOWN_CONFIG } = GAME_CONFIG;
+const {
+    levels: LEVEL_CONFIG,
+    tunnel: TUNNEL_CONFIG,
+    ship: SHIP_CONFIG,
+    laser: LASER_CONFIG,
+    track: TRACK_CONFIG,
+    autopilot: AUTOPILOT_CONFIG,
+    countdown: COUNTDOWN_CONFIG
+} = GAME_CONFIG;
 const SEGMENT_LENGTH = TUNNEL_CONFIG.segmentLength;
 const TUNNEL_WIDTH = TUNNEL_CONFIG.width;
 const TUNNEL_HEIGHT = TUNNEL_CONFIG.height;
@@ -12,12 +20,12 @@ const SHIP_WIDTH = SHIP_CONFIG.width;
 const SHIP_HEIGHT = SHIP_CONFIG.height;
 
 export const EngineStatus = Object.freeze({
-    MENU:      'menu',
+    MENU: 'menu',
     COUNTDOWN: 'countdown',
-    PLAYING:   'playing',
-    EXITING:   'exiting',
-    WIN:       'win',
-    COMPLETE:  'complete'
+    PLAYING: 'playing',
+    EXITING: 'exiting',
+    WIN: 'win',
+    COMPLETE: 'complete'
 });
 
 export class GameState {
@@ -63,19 +71,17 @@ export class GameEngine {
         this.state.shipVY = 0;
         this.state.projectiles = [];
         this.state.lastFireTime = 0;
-        
+
         this.state.gameState = EngineStatus.COUNTDOWN;
         this.state.countdownTime = COUNTDOWN_CONFIG.duration;
         this.state.lastBeepStep = -1;
 
-        return [
-            gameEvent(GameEventType.LEVEL_STARTED, { level })
-        ];
+        return [gameEvent(GameEventType.LEVEL_STARTED, { level })];
     }
 
     handleCrash(events) {
         if (this.state.gameState !== EngineStatus.PLAYING) return;
-        
+
         this.state.speed *= SHIP_CONFIG.crashSpeedPenalty;
         this.state.cameraZ -= SHIP_CONFIG.crashRewind;
         if (this.state.cameraZ < 0) this.state.cameraZ = 0;
@@ -103,7 +109,7 @@ export class GameEngine {
                 events.push(gameEvent(GameEventType.COUNTDOWN_BEEP, { isHigh: currentStep === 0 }));
                 state.lastBeepStep = currentStep;
             }
-            
+
             state.countdownTime -= dt;
             if (state.countdownTime <= 0) {
                 state.gameState = EngineStatus.PLAYING;
@@ -112,7 +118,7 @@ export class GameEngine {
             }
         } else if (state.gameState === EngineStatus.PLAYING) {
             state.elapsedTime = (now - state.startTime) / 1000;
-            
+
             if (input.controls.throttle) {
                 state.speed += SHIP_CONFIG.throttleAccel * dt;
             } else if (input.controls.brake) {
@@ -120,10 +126,10 @@ export class GameEngine {
             } else {
                 state.speed -= SHIP_CONFIG.coastDecel * dt;
             }
-            
+
             state.speed = Math.max(0, Math.min(state.speed, state.MAX_SPEED));
             state.cameraZ += state.speed * dt;
-            
+
             if (input.controls.left) state.shipVX -= SHIP_ACCEL * dt;
             if (input.controls.right) state.shipVX += SHIP_ACCEL * dt;
             if (input.controls.up) state.shipVY -= SHIP_ACCEL * dt;
@@ -142,10 +148,10 @@ export class GameEngine {
             }
 
             // Update projectiles and check for hits
-            state.projectiles = state.projectiles.filter(p => {
+            state.projectiles = state.projectiles.filter((p) => {
                 const age = now - p.startTime;
                 if (age > LASER_CONFIG.lifetimeMs) return false;
-                
+
                 const previousAge = Math.max(0, age - dt * 1000);
                 const previousProgress = previousAge / LASER_CONFIG.lifetimeMs;
                 const progress = age / LASER_CONFIG.lifetimeMs;
@@ -153,52 +159,52 @@ export class GameEngine {
                 const headZ = p.z + LASER_CONFIG.startOffset + progress * LASER_CONFIG.range;
 
                 const startSegIdx = Math.max(0, Math.floor(Math.min(previousHeadZ, headZ) / SEGMENT_LENGTH));
-                const endSegIdx = Math.min(state.trackLength - 1, Math.floor(Math.max(previousHeadZ, headZ) / SEGMENT_LENGTH));
+                const endSegIdx = Math.min(
+                    state.trackLength - 1,
+                    Math.floor(Math.max(previousHeadZ, headZ) / SEGMENT_LENGTH)
+                );
 
-                // Sweep across every segment crossed this frame so fast laser bolts cannot skip thin obstacles.
+                // Sweep across every segment crossed this frame so fast laser bolts cannot skip thin doors.
                 for (let segIdx = startSegIdx; segIdx <= endSegIdx; segIdx++) {
                     const seg = state.track[segIdx];
-                    if (!seg) continue;
+                    if (!seg || !seg.door) continue;
 
-                    if (seg.door) {
-                        const currentW = (TUNNEL_WIDTH * seg.widthFactor) / 2;
-                        const currentH = (TUNNEL_HEIGHT * seg.heightFactor) / 2;
+                    const currentW = (TUNNEL_WIDTH * seg.widthFactor) / 2;
+                    const currentH = (TUNNEL_HEIGHT * seg.heightFactor) / 2;
 
-                        if (seg.door.checkLaserHit(p.x, p.y, LASER_CONFIG.hitSize, LASER_CONFIG.hitSize, currentW, currentH, now)) {
-                            const distToDoor = seg.door.doorZ - state.cameraZ;
-                            if (distToDoor < LASER_CONFIG.triggerDistance) {
-                                seg.door.onHit(now);
-                            } else {
-                                seg.door.lastHitTime = now;
-                            }
-                            events.push(gameEvent(GameEventType.LASER_HIT_DOOR, { segmentIndex: segIdx }));
-                            return false; // Laser absorbed by door
+                    if (
+                        seg.door.checkLaserHit(
+                            p.x,
+                            p.y,
+                            LASER_CONFIG.hitSize,
+                            LASER_CONFIG.hitSize,
+                            currentW,
+                            currentH,
+                            now
+                        )
+                    ) {
+                        const distToDoor = seg.door.doorZ - state.cameraZ;
+                        if (distToDoor < LASER_CONFIG.triggerDistance) {
+                            seg.door.onHit(now);
+                        } else {
+                            seg.door.lastHitTime = now;
                         }
-                    }
-
-                    if (seg.type === 'mine' && !seg.mineDestroyed) {
-                        const dx = p.x - seg.mineX;
-                        const dy = p.y - seg.mineY;
-                        if (Math.sqrt(dx * dx + dy * dy) <= MINE_CONFIG.laserHitRadius) {
-                            seg.mineDestroyed = true;
-                            seg.mineExplosionStart = now;
-                            events.push(gameEvent(GameEventType.MINE_DESTROYED, { segmentIndex: segIdx }));
-                            return false; // Laser detonates the mine
-                        }
+                        events.push(gameEvent(GameEventType.LASER_HIT_DOOR, { segmentIndex: segIdx }));
+                        return false; // Laser absorbed by door
                     }
                 }
-                
+
                 return headZ < state.cameraZ + LASER_CONFIG.range;
             });
-            
+
             state.shipVX *= SHIP_FRICTION;
             state.shipVY *= SHIP_FRICTION;
-            
+
             state.shipX += state.shipVX * dt;
             state.shipY += state.shipVY * dt;
-            
+
             let currentSegIndex = Math.floor(state.cameraZ / SEGMENT_LENGTH);
-            
+
             // Activate doors ahead of the player
             for (let ahead = 0; ahead < 20; ahead++) {
                 let idx = currentSegIndex + ahead;
@@ -206,14 +212,14 @@ export class GameEngine {
                     state.track[idx].door.checkActivation(state.cameraZ, now);
                 }
             }
-            
+
             // Enter exit zone — switch to cinematic autopilot
             if (currentSegIndex >= state.trackLength - TRACK_CONFIG.exitZoneSegments) {
                 state.gameState = EngineStatus.EXITING;
                 events.push(gameEvent(GameEventType.EXIT_STARTED, { level: state.currentLevel }));
                 return events;
             }
-            
+
             let currentSeg = state.track[currentSegIndex];
             if (!currentSeg) {
                 return events;
@@ -224,31 +230,55 @@ export class GameEngine {
             let marginX = SHIP_WIDTH / 2;
             let marginY = SHIP_HEIGHT / 2;
             let hitWall = false;
-            
-            if (state.shipX < -currentW + marginX) { state.shipX = -currentW + marginX; state.shipVX = Math.abs(state.shipVX) * SHIP_CONFIG.wallBounce + SHIP_CONFIG.wallKick; hitWall = true; }
-            if (state.shipX > currentW - marginX) { state.shipX = currentW - marginX; state.shipVX = -Math.abs(state.shipVX) * SHIP_CONFIG.wallBounce - SHIP_CONFIG.wallKick; hitWall = true; }
-            if (state.shipY < -currentH + marginY) { state.shipY = -currentH + marginY; state.shipVY = Math.abs(state.shipVY) * SHIP_CONFIG.wallBounce + SHIP_CONFIG.wallKick; hitWall = true; }
-            if (state.shipY > currentH - marginY) { state.shipY = currentH - marginY; state.shipVY = -Math.abs(state.shipVY) * SHIP_CONFIG.wallBounce - SHIP_CONFIG.wallKick; hitWall = true; }
-            
+
+            if (state.shipX < -currentW + marginX) {
+                state.shipX = -currentW + marginX;
+                state.shipVX = Math.abs(state.shipVX) * SHIP_CONFIG.wallBounce + SHIP_CONFIG.wallKick;
+                hitWall = true;
+            }
+            if (state.shipX > currentW - marginX) {
+                state.shipX = currentW - marginX;
+                state.shipVX = -Math.abs(state.shipVX) * SHIP_CONFIG.wallBounce - SHIP_CONFIG.wallKick;
+                hitWall = true;
+            }
+            if (state.shipY < -currentH + marginY) {
+                state.shipY = -currentH + marginY;
+                state.shipVY = Math.abs(state.shipVY) * SHIP_CONFIG.wallBounce + SHIP_CONFIG.wallKick;
+                hitWall = true;
+            }
+            if (state.shipY > currentH - marginY) {
+                state.shipY = currentH - marginY;
+                state.shipVY = -Math.abs(state.shipVY) * SHIP_CONFIG.wallBounce - SHIP_CONFIG.wallKick;
+                hitWall = true;
+            }
+
             if (hitWall) {
                 state.speed *= SHIP_CONFIG.wallSpeedPenalty;
                 events.push(gameEvent(GameEventType.WALL_SCRAPED));
             }
-            
+
             if (currentSegIndex > 0) {
-                let segDist = state.cameraZ - (currentSegIndex * SEGMENT_LENGTH);
+                let segDist = state.cameraZ - currentSegIndex * SEGMENT_LENGTH;
                 if (segDist < 100 && state.speed > 0) {
                     if (currentSeg.door) {
-                        let result = currentSeg.door.checkCollision(state.shipX, state.shipY, SHIP_WIDTH, SHIP_HEIGHT, currentW, currentH, now);
+                        let result = currentSeg.door.checkCollision(
+                            state.shipX,
+                            state.shipY,
+                            SHIP_WIDTH,
+                            SHIP_HEIGHT,
+                            currentW,
+                            currentH,
+                            now
+                        );
                         if (result === 'crash') {
                             this.handleCrash(events);
                         } else if (result === 'passed') {
                             events.push(gameEvent(GameEventType.DOOR_PASSED, { segmentIndex: currentSegIndex }));
                         }
-                    } else if (currentSeg.type === 'mine' && !currentSeg.mineDestroyed) {
+                    } else if (currentSeg.type === 'mine') {
                         let dx = state.shipX - currentSeg.mineX;
                         let dy = state.shipY - currentSeg.mineY;
-                        if (Math.sqrt(dx*dx + dy*dy) < SHIP_WIDTH/2 + MINE_CONFIG.radius) {
+                        if (Math.sqrt(dx * dx + dy * dy) < SHIP_WIDTH / 2 + 50) {
                             this.handleCrash(events);
                         }
                     }
@@ -258,13 +288,13 @@ export class GameEngine {
             // Autopilot: accelerate to max and center the ship
             state.speed += (state.MAX_SPEED - state.speed) * 2 * dt;
             state.cameraZ += state.speed * dt;
-            
+
             // Smoothly center the ship
             state.shipX *= AUTOPILOT_CONFIG.centerDamping;
             state.shipY *= AUTOPILOT_CONFIG.centerDamping;
             state.shipVX *= AUTOPILOT_CONFIG.velocityDamping;
             state.shipVY *= AUTOPILOT_CONFIG.velocityDamping;
-            
+
             let currentSegIndex = Math.floor(state.cameraZ / SEGMENT_LENGTH);
             if (currentSegIndex >= state.trackLength + AUTOPILOT_CONFIG.finishPaddingSegments) {
                 this.handleWin(events);
